@@ -21,12 +21,12 @@ modules:
       instance:
         destinations:
         - Name: sistemaTurnos_sistemaTurnos_html_repo_host
-          ServiceInstanceName: sistemaTurnos-html5-app-host-service
+          ServiceInstanceName: transenersistemadeturnos-html5-srv
           ServiceKeyName: sistemaTurnos_html_repo_host-key
           sap.cloud.service: sistemaTurnos
         - Authentication: OAuth2UserTokenExchange
           Name: sistemaTurnos_uaa_sistemaTurnos
-          ServiceInstanceName: sistemaTurnos-xsuaa-service
+          ServiceInstanceName: transenersistemadeturnos-xsuaa-srv
           ServiceKeyName: uaa_sistemaTurnos-key
           sap.cloud.service: sistemaTurnos
         existing_destinations_policy: ignore
@@ -80,20 +80,20 @@ resources:
           existing_destinations_policy: update
       version: 1.0.0
     service: destination
-    service-name: sistemaTurnos-destination-service
+    service-name: transenersistemadeturnos-destination-service
     service-plan: lite
 - name: sistemaTurnos_html_repo_host
   type: org.cloudfoundry.managed-service
   parameters:
     service: html5-apps-repo
-    service-name: sistemaTurnos-html5-app-host-service
+    service-name: transenersistemadeturnos-html5-srv
     service-plan: app-host
 - name: uaa_sistemaTurnos
   type: org.cloudfoundry.managed-service
   parameters:
     path: ./xs-security.json
     service: xsuaa
-    service-name: sistemaTurnos-xsuaa-service
+    service-name: transenersistemadeturnos-xsuaa-srv
     service-plan: application
 parameters:
   deploy_mode: html5-repo

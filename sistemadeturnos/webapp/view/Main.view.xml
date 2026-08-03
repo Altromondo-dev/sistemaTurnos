@@ -145,14 +145,6 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <!-- Nueva columna: Descripción del Equipo -->
-                                    <t:Column width="350px" hAlign="Left" sortProperty="DescEquipo" filterProperty="DescEquipo">
-                                        <Label text="Descripción Equipo" />
-                                        <t:template>
-                                            <Text text="{LicencesJsonModel>DescEquipo}" wrapping="true" />
-                                        </t:template>
-                                    </t:Column>
-
                                     <t:Column hAlign="Center" width="140px" sortProperty="Id" filterProperty="Id">
                                         <Label text="IdLicencia" />
                                         <t:template>
@@ -287,9 +279,9 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <!-- Columna Trabajo a Realizar -->
+                                    <!-- Columna Comentarios -->
                                     <t:Column width="300px">
-                                        <Label text="{i18n>toDoWork}" />
+                                        <Label text="{i18n>accionComentarios}" />
                                         <t:template>
                                             <Text text="{AccionesEntregaModel>trabajoRealizar}" textAlign="Center" wrapping="true" />
                                         </t:template>
