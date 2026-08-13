@@ -23,22 +23,11 @@ sap.ui.define([
         let duration = 15; // default
         let condition = ""; // Nueva propiedad para describir la condición
 
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        console.log("🔍 ANALIZANDO LICENCIA:", license.Id || license.Equnr);
-        console.log("   📋 Jobcond (Condición):", job, "=>", getJobCondName(job));
-        console.log("   🏗️  Tipoequipo:", tipo);
-        console.log("   ⚡ Patadic:", Patadic);
-        console.log("   ⚡ Seccionadores de PaT Cerrados:", Intercerr);
-        console.log("   🔌 Interruptores abiertos (Interabier):", interruptoresAbiertos);
-        console.log("   🔩 Seccionadores abiertos (Seleccionad):", seccionadoresAbiertos);
-        console.log("   🔒 Bloqueo recierre (Bloqueo):", bloqueoRecierre);
-
         if (job === "01") { // Consignación
             if (tipo === "L2" || tipo === "L5") {
                 category = "ConsignacionLinea";
                 duration = 45;
                 condition = "Línea L2 o L5 (500kV/220kV)";
-                console.log("   ✅ CATEGORÍA: Consignación de LÍNEA (L2 o L5) - 45 min");
             } else if (tiposLinea.includes(tipo)) {
                 // 🆕 PARA L1, L3, L4, L6 - mostrar qué tiene
                 category = "ConsignacionEquipo";
@@ -51,7 +40,6 @@ sap.ui.define([
                 if (seccionadoresAbiertos && String(seccionadoresAbiertos).trim() !== "") partes.push("Seccionadores");
 
                 condition = partes.length > 0 ? partes.join(" + ") : `Línea ${tipo}`;
-                console.log("   ✅ CATEGORÍA: Consignación de EQUIPO (L1/L3/L4/L6) - 30 min");
             } else {
                 // 🆕 PARA OTROS EQUIPOS (TR, IN, etc.) - mostrar qué tiene
                 category = "ConsignacionEquipo";
@@ -64,17 +52,11 @@ sap.ui.define([
                 if (seccionadoresAbiertos && String(seccionadoresAbiertos).trim() !== "") partes.push("Seccionadores");
 
                 condition = partes.length > 0 ? partes.join(" + ") : `Tipo: ${tipo}`;
-                console.log("   ✅ CATEGORÍA: Consignación de EQUIPO (Otro tipo) - 30 min");
             }
-        } else if (job === "06") { // Condiciones Especiales 
+        } else if (job === "06") { // Condiciones Especiales
             const patEstaVacio = !Patadic || String(Patadic).trim() === "" || !Intercerr || String(Intercerr).trim() === "";
             const tieneInterruptores = interruptoresAbiertos && String(interruptoresAbiertos).trim() !== "";
             const tieneSeccionadores = seccionadoresAbiertos && String(seccionadoresAbiertos).trim() !== "";
-
-            console.log("   🔎 Verificando condiciones especiales:");
-            console.log("      - PAT está vacío?", patEstaVacio);
-            console.log("      - Tiene interruptores?", tieneInterruptores);
-            console.log("      - Tiene seccionadores?", tieneSeccionadores);
 
             if (patEstaVacio && (tieneInterruptores || tieneSeccionadores)) {
                 category = "ManiobrasSinConsignacion";
@@ -83,12 +65,10 @@ sap.ui.define([
                 if (tieneInterruptores) equipos.push("Interruptores");
                 if (tieneSeccionadores) equipos.push("Seccionadores");
                 condition = `PAT vacío + ${equipos.join(" y ")}`;
-                console.log("   ✅ CATEGORÍA: Maniobras SIN Consignación - 20 min");
             } else {
                 category = "SinManiobras";
                 duration = 10;
                 condition = "Sin equipos de maniobra";
-                console.log("   ✅ CATEGORÍA: SIN Maniobras - 10 min");
             }
         } else if (job === "04" || job === "05") {
             // 🔍 VERIFICAR SI TIENE BLOQUEO DE RECIERRE
@@ -98,35 +78,16 @@ sap.ui.define([
                 category = "TCTConBloqueo";
                 duration = 15;
                 condition = "Con bloqueo de recierre";
-                console.log("   ✅ CATEGORÍA: TCT CON Bloqueo - 15 min");
             } else {
                 category = "TCTSinBloqueo";
                 duration = 15;
                 condition = "Sin bloqueo de recierre";
-                console.log("   ✅ CATEGORÍA: TCT SIN Bloqueo - 15 min");
             }
         } else {
             condition = "No clasificado";
-            console.log("   ⚠️  CATEGORÍA: Otro (no clasificado)");
         }
-
-        console.log("   🎯 RESULTADO FINAL: Categoría =", category, "| Duración =", duration, "min | Condición =", condition);
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
         return { category, duration, condition };
-    }
-
-    // 📝 Función auxiliar para mostrar el nombre legible de Jobcond
-    function getJobCondName(job) {
-        switch (job) {
-            case '01': return 'Consignación';
-            case '02': return 'Trabajo sin Tensión con PaT';
-            case '03': return 'Trabajo con Tensión de Retorno';
-            case '04': return 'Trabajo con Tensión (TcT)';
-            case '05': return 'Trabajo Especiales (TcT)';
-            case '06': return 'Condiciones Especiales';
-            default: return job;
-        }
     }
 
     return {
@@ -146,12 +107,7 @@ sap.ui.define([
             // 🆕 ARRAY PARA EL REPORTE
             let aReporteData = [];
 
-            console.log("\n🔢 ════════════════════════════════════════════");
-            console.log("📊 INICIANDO CONTEO DE ITEMS - Total licencias:", data?.length || 0);
-            console.log("════════════════════════════════════════════\n");
-
             (data || []).forEach((item, index) => {
-                console.log(`\n📌 Procesando licencia ${index + 1}/${data.length}`);
                 const info = getShiftInfo(item);
 
                 switch (info.category) {
@@ -182,8 +138,6 @@ sap.ui.define([
                     info.category === "ManiobrasSinConsignacion";
 
                 if (esConManiobras) {
-                    console.log("      ✅ INCLUIDO en reporte de maniobras");
-
                     // Formatear hora
                     var sHora = "";
                     if (item.TurnoAsignado) {
@@ -243,22 +197,6 @@ sap.ui.define([
             const LTWithoutManouvers = sinManiobras;
             const TCT = tctConBloqueo + tctSinBloqueo;
             const totalCount = LTWithManouvers + LTWithoutManouvers + TCT;
-
-            console.log("\n📊 ════════════════════════════════════════════");
-            console.log("✅ RESUMEN FINAL DE CONTEO:");
-            console.log("   🔵 Consignación Línea (L2/L5):", consignacionLinea);
-            console.log("   🟢 Consignación Equipo:", consignacionEquipo);
-            console.log("   🟡 Maniobras Sin Consignación:", maniobrasSinConsignacion);
-            console.log("   🟠 Sin Maniobras:", sinManiobras);
-            console.log("   🔴 TCT Con Bloqueo:", tctConBloqueo);
-            console.log("   🟣 TCT Sin Bloqueo:", tctSinBloqueo);
-            console.log("   ────────────────────────────");
-            console.log("   📈 LT con maniobras:", LTWithManouvers);
-            console.log("   📉 LT sin maniobras:", LTWithoutManouvers);
-            console.log("   ⚡ Total TCT:", TCT);
-            console.log("   🎯 TOTAL GENERAL:", totalCount);
-            console.log("   📋 TOTAL EN REPORTE:", aReporteData.length);
-            console.log("════════════════════════════════════════════\n");
 
             const counts = {
                 ConsignacionLinea: consignacionLinea,

@@ -63,7 +63,8 @@ sap.ui.define([
             var oViewModel = new JSONModel({
                 busy: false,
                 delay: 0,
-                isProgramacion: false
+                isProgramacion: false,
+                canViewResumen: false
             });
             this.getView().setModel(oViewModel, "viewModel");
 
@@ -118,6 +119,8 @@ sap.ui.define([
 
         _aplicarPermisosPorRol: function () {
             var bEsEditor = RoleHelper.isEditor();
+            var bCanViewFullDetail = RoleHelper.canViewFullDetail();
+            var bCanViewResumen = RoleHelper.canViewResumen();
 
             // Botón Crear Solicitud
             var btnCrear = this.byId("btnCrearSolicitud");
@@ -234,14 +237,18 @@ sap.ui.define([
                 chkPAT.setEnabled(bEsEditor);
             }
 
-            // Visibilidad de tabs según rol
+            // Visibilidad de tabs según rol:
+            // - isProgramacion: tabs de detalle completo (Turno, Acciones para la entrega) →
+            //   Editor y Full viewer (el modo edición/lectura de cada campo ya lo define bEsEditor arriba)
+            // - canViewResumen: tabs Resumen y Gráfico → Editor, Full viewer y Basic viewer
             var oViewModel = this.getView().getModel("viewModel");
             if (oViewModel) {
-                oViewModel.setProperty("/isProgramacion", bEsEditor);
+                oViewModel.setProperty("/isProgramacion", bCanViewFullDetail);
+                oViewModel.setProperty("/canViewResumen", bCanViewResumen);
             }
 
-            // Si tiene acceso a la tab de Turno, seleccionarla por defecto
-            if (bEsEditor) {
+            // Si tiene acceso al detalle completo, seleccionar la tab de Turno por defecto
+            if (bCanViewFullDetail) {
                 var oIconTabBar = this.byId("mainTabBar");
                 if (oIconTabBar) {
                     oIconTabBar.setSelectedKey("LIC");
@@ -1787,6 +1794,7 @@ sap.ui.define([
             this.showGlobalBusy("Buscando turnos creados…");
 
             const sEmpresa = SocietyHelper.getCurrentSociety(oView);
+
             const aFilters = [
                 new sap.ui.model.Filter("Dateturno", sap.ui.model.FilterOperator.EQ, oDateValue),
                 new sap.ui.model.Filter("Empresa", sap.ui.model.FilterOperator.EQ, sEmpresa)
@@ -1806,14 +1814,14 @@ sap.ui.define([
                         return;
                     }
 
-                    // Hay registros en TurnosLicenciasSet, pero pueden corresponder a
-                    // licencias en estado "prohibido" (no visibles en la vista principal).
-                    // Usamos los mismos filtros de fecha que TurnosService.search (Solbeg/Solend)
-                    // porque el backend SAP ignora el filtro OR por Id en LicenciaTrabajoSet.
-                    // Luego cruzamos client-side contra los IDs de TurnosLicenciasSet.
-                    console.log("🔍 [v2] _checkExistingTurnoAndProceed: verificando estados de", aRes.length, "registros en TurnosLicenciasSet");
+                    // Hay registros en TurnosLicenciasSet, pero eso no alcanza para saber
+                    // qué mostrar: puede haber licencias nuevas, elegibles hoy, que todavía
+                    // no se guardaron nunca en un turno para esta fecha. Por eso recalculamos
+                    // siempre el conjunto vigente (mismos filtros que TurnosService.search:
+                    // Solbeg/Solend + estado + modalidad) y solo usamos lo guardado en
+                    // TurnosLicenciasSet para rescatar el horario/comentario ya asignado.
                     const sFecha = oDateValue.toISOString().split("T")[0];
-                    const aUniqueIds = new Set(aRes.map(r => r.Id));
+                    const oGuardadasPorId = new Map(aRes.map(r => [r.Id, r]));
 
                     oDataService.read("/LicenciaTrabajoSet", {
                         filters: [
@@ -1823,21 +1831,31 @@ sap.ui.define([
                             new sap.ui.model.Filter("Tipo", sap.ui.model.FilterOperator.EQ, "L")
                         ],
                         success: (oLicData) => {
-                            // Primero filtrar por estado (misma lógica que la vista)
+                            // Todas las licencias elegibles hoy para esta fecha (estado + modalidad)
                             const aFiltradas = TurnosService.filtrarFechasTipo(oLicData.results || [], sFecha);
-                            // Luego cruzar contra los IDs que están en TurnosLicenciasSet
-                            const aActivas = aFiltradas.filter(l => aUniqueIds.has(l.Id));
 
-                            console.log("🔍 [v2] activas en TurnosLicenciasSet:", aActivas.length, "de", aFiltradas.length, "licencias válidas totales");
+                            // Mezclar: cada elegible conserva su horario/comentario si ya estaba
+                            // guardada; si no, entra "en blanco" para calcularse como nueva.
+                            const aLicenciasParaTurno = aFiltradas.map((lic) => {
+                                const oGuardada = oGuardadasPorId.get(lic.Id);
+                                return {
+                                    ...lic,
+                                    Turno: oGuardada ? oGuardada.Turno : "",
+                                    Comentarios: oGuardada ? oGuardada.Comentarios : "",
+                                    Enviado: oGuardada ? oGuardada.Enviado : false,
+                                    Agrmanual: oGuardada ? oGuardada.Agrmanual : false,
+                                    Dateturno: oDateValue
+                                };
+                            });
 
-                            if (!aActivas.length) {
-                                // Ninguna licencia del turno guardado está activa → crear nuevo
+                            if (!aLicenciasParaTurno.length) {
+                                // Ninguna licencia elegible para esta fecha → crear nuevo
                                 this._proceedToCreateTurno(oDateValue);
                                 return;
                             }
 
-                            // Hay licencias activas: el turno existe realmente
-                            this._showTurnoExisteWarning(aRes, oData, oDateValue);
+                            // Hay licencias elegibles: el turno existe realmente
+                            this._showTurnoExisteWarning(aLicenciasParaTurno, oData, oDateValue);
                         },
                         error: () => {
                             // Si la verificación secundaria falla, ser conservador:
@@ -1918,6 +1936,25 @@ sap.ui.define([
                 return;
             }
 
+            var fnValidarNoAnterior = function (oFecha) {
+                var oFechaNormalizada = new Date(Date.UTC(
+                    oFecha.getUTCFullYear(),
+                    oFecha.getUTCMonth(),
+                    oFecha.getUTCDate(),
+                    0, 0, 0, 0
+                ));
+
+                var oHoy = new Date();
+                var oHoyNormalizada = new Date(Date.UTC(
+                    oHoy.getFullYear(),
+                    oHoy.getMonth(),
+                    oHoy.getDate(),
+                    0, 0, 0, 0
+                ));
+
+                return oFechaNormalizada.getTime() >= oHoyNormalizada.getTime();
+            };
+
             this._oFechaTurnoPicker = new sap.m.DatePicker({
                 width: "100%",
                 dateValue: new Date(),
@@ -1928,11 +1965,10 @@ sap.ui.define([
 
             this._oFechaTurnoDialog = new sap.m.Dialog({
                 title: "Seleccionar fecha",
-                contentWidth: "22rem",
+                contentWidth: "30rem",
                 content: [
-                    new sap.m.VBox({
+                    new sap.m.HBox({
                         width: "100%",
-                        alignItems: "Center",
                         justifyContent: "Center",
                         items: [
                             this._oFechaTurnoPicker.addStyleClass("sapUiSmallMarginTop")
@@ -1950,23 +1986,7 @@ sap.ui.define([
                         }
 
                         // ✅ VALIDACIÓN: No permitir crear turnos con fecha anterior a hoy
-                        var oFechaTurno = new Date(oDateValue);
-                        var oFechaTurnoNormalizada = new Date(Date.UTC(
-                            oFechaTurno.getUTCFullYear(),
-                            oFechaTurno.getUTCMonth(),
-                            oFechaTurno.getUTCDate(),
-                            0, 0, 0, 0
-                        ));
-
-                        var oHoy = new Date();
-                        var oHoyNormalizada = new Date(Date.UTC(
-                            oHoy.getFullYear(),
-                            oHoy.getMonth(),
-                            oHoy.getDate(),
-                            0, 0, 0, 0
-                        ));
-
-                        if (oFechaTurnoNormalizada.getTime() < oHoyNormalizada.getTime()) {
+                        if (!fnValidarNoAnterior(new Date(oDateValue))) {
                             sap.m.MessageBox.error(
                                 "No se puede crear un turno con fecha anterior al día de hoy. Por favor, seleccione una fecha válida.",
                                 {

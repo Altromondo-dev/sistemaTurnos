@@ -176,10 +176,22 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column id="toDoWork" width="450px" sortProperty="Comments" filterProperty="Comments">
+                                    <t:Column id="toDoWork" width="450px" sortProperty="Descripcion" filterProperty="Descripcion">
                                         <Label text="{i18n>toDoWork}" />
                                         <t:template>
-                                            <Text text="{LicencesJsonModel>Comments}" wrapping="true" />
+                                            <Text text="{
+                                                    parts: [
+                                                        'LicencesJsonModel>R500kv',
+                                                        'LicencesJsonModel>Bloqueo',
+                                                        'LicencesJsonModel>Barrafs',
+                                                        'LicencesJsonModel>Barrafstx',
+                                                        'LicencesJsonModel>Equiinterv',
+                                                        'LicencesJsonModel>Descripcion',
+                                                        'LicencesJsonModel>Solend',
+                                                        'LicencesJsonModel>Id'
+                                                    ],
+                                                    formatter: '.formatter.buildParteDiarioCammesa'
+                                                }" wrapping="true" />
                                         </t:template>
                                     </t:Column>
 
@@ -535,7 +547,7 @@
 
                         <!-- TAB REPORTES MANIOBRAS -->
 
-                        <IconTabFilter text="Resumen" key="REPORTE" visible="{viewModel>/isProgramacion}">
+                        <IconTabFilter text="Resumen" key="REPORTE" visible="{viewModel>/canViewResumen}">
                             <HBox justifyContent="End">
                                 <Button icon="sap-icon://email" text="Enviar Mail Cammesa" press="sendMailCammesa" />
                             </HBox>
@@ -652,7 +664,7 @@
                             </Panel>
                         </IconTabFilter>
 
-                        <IconTabFilter text="Grafico" key="Grafico" visible="{viewModel>/isProgramacion}">
+                        <IconTabFilter text="Grafico" key="Grafico" visible="{viewModel>/canViewResumen}">
                             <VBox class="sapUiMediumMarginBegin sapUiMediumMarginTop">
                                 <Title text="Acciones para la entrega" level="H2" />
                                 <Text text="Turno del {LicencesTurnoJsonModel>/FechaTurno}" class="sapUiSmallMarginTop" />

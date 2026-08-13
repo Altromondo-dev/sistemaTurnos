@@ -143,6 +143,28 @@ sap.ui.define([
             return "";
         },
 
+        buildParteDiarioCammesa: function (sR500kv, sBloqueo, sBarrafs, sBarrafstx, sEquiinterv, sDescripcion, oSolend, sId) {
+            let sValue = "";
+            sValue += sR500kv === "X" ? " Requiere calle 500 kV abierta: Si, " : "";
+            sValue += sBloqueo === "X" ? " Bloqueo de recierre: Si, " : "";
+            sValue += sBarrafs === "X" ? " Requiere Barra F/S: Si, Barra Especificada: " + (sBarrafstx || "") + " " : "";
+
+            let sFecha = "";
+            if (oSolend) {
+                const oDate = oSolend instanceof Date ? oSolend : new Date(oSolend);
+                if (!isNaN(oDate)) {
+                    const oDateOffset = new Date(oDate.getTime() + oDate.getTimezoneOffset() * 60 * 1000);
+                    sFecha = sap.ui.core.format.DateFormat.getDateTimeInstance({ pattern: "dd-MM-yyyy" }).format(oDateOffset);
+                }
+            }
+
+            sValue += " Equipo a Intervenir: " + (sEquiinterv || "") + " ";
+            sValue += " Trabajo a realizar " + (sDescripcion || "") + " ";
+            sValue += " Finaliza:" + sFecha + " LT Nº " + (sId || "") + " ";
+
+            return sValue;
+        },
+
         formatLicState: function (sLicstat) {
             switch (sLicstat) {
                 case "01":
