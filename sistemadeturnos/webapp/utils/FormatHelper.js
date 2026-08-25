@@ -23,9 +23,9 @@ sap.ui.define([
         getEstado: function (value) {
             switch (value) {
                 case "":
-                    return "F/S";
+                    return "Fuera de Servicio";
                 case "X":
-                    return "E/S"
+                    return "En Servicio"
                 default:
                     return value
             }
@@ -56,7 +56,7 @@ sap.ui.define([
                 case '113':
                     return 'Norte';
                 case '102':
-                    return 'Reg. Metropolitana';
+                    return 'Centro Este';
                 case '104':
                 case '114':
                     return 'Sur';

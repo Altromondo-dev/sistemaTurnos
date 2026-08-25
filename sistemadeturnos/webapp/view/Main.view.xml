@@ -152,7 +152,7 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column id="status" width="60px" hAlign="Center" sortProperty="Equstat" filterProperty="Equstat">
+                                    <t:Column id="status" width="150px" hAlign="Center" sortProperty="Equstat" filterProperty="Equstat">
                                         <Label text="{i18n>status}" class="back" />
                                         <t:template>
                                             <Text text="{ path: 'LicencesJsonModel>Equstat' ,formatter: '.formatter.getEstado' }" wrapping="false" />
@@ -371,7 +371,7 @@
                                     </t:Column>
 
                                     <!-- Estado -->
-                                    <t:Column id="statusCrono" width="88px" hAlign="Center">
+                                    <t:Column id="statusCrono" width="150px" hAlign="Center">
                                         <Label text="{i18n>status}" class="back" />
                                         <t:template>
                                             <Text text="{ path: 'listCronoTreeModel>Equstat' ,formatter: '.formatter.getEstado' }" wrapping="false" />

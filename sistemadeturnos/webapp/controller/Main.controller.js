@@ -6165,7 +6165,7 @@ sap.ui.define([
             var Filter = sap.ui.model.Filter;
             var FilterOperator = sap.ui.model.FilterOperator;
 
-            // ── Equstat: E/S → "X", F/S → "" ─────────────────────────────
+            // ── Equstat: "En Servicio" → "X", "Fuera de Servicio" → "" ──
             if (sFilterProp === "Equstat") {
                 oEvent.preventDefault();
 
@@ -6176,19 +6176,29 @@ sap.ui.define([
                     return;
                 }
 
-                var bMatchES = "E/S".indexOf(sValue) !== -1; // usuario escribió "E", "E/", "E/S"
-                var bMatchFS = "F/S".indexOf(sValue) !== -1; // usuario escribió "F", "F/", "F/S"
+                var sTextoES = "EN SERVICIO";
+                var sTextoFS = "FUERA DE SERVICIO";
+
+                // Prioridad: coincidencia desde el inicio ("E" → En Servicio, "F" → Fuera de Servicio)
+                var bMatchES = sTextoES.indexOf(sValue) === 0;
+                var bMatchFS = sTextoFS.indexOf(sValue) === 0;
+
+                // Si no coincide desde el inicio, se acepta coincidencia parcial ("SERVICIO" → ambos)
+                if (!bMatchES && !bMatchFS) {
+                    bMatchES = sTextoES.indexOf(sValue) !== -1;
+                    bMatchFS = sTextoFS.indexOf(sValue) !== -1;
+                }
 
                 var oFilter;
                 if (bMatchES && bMatchFS) {
-                    // ambos coinciden (ej: "/S" o "/") → mostrar todos
+                    // ambos coinciden (ej: "SERVICIO") → mostrar todos
                     oBinding.filter([], sap.ui.model.FilterType.Control);
                     return;
                 } else if (bMatchES) {
-                    // E/S → Equstat = "X"
+                    // En Servicio → Equstat = "X"
                     oFilter = new Filter("Equstat", FilterOperator.EQ, "X");
                 } else if (bMatchFS) {
-                    // F/S → Equstat vacío o null
+                    // Fuera de Servicio → Equstat vacío o null
                     oFilter = new Filter({
                         filters: [
                             new Filter("Equstat", FilterOperator.EQ, ""),
