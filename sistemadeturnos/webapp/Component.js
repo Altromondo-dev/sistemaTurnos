@@ -5,9 +5,10 @@
 sap.ui.define([
         "sap/ui/core/UIComponent",
         "sap/ui/Device",
-        "transener/sistemadeturnos/model/models"
+        "transener/sistemadeturnos/model/models",
+        "transener/sistemadeturnos/utils/SessionTimeoutHelper"
     ],
-    function (UIComponent, Device, models) {
+    function (UIComponent, Device, models, SessionTimeoutHelper) {
         "use strict";
 
         return UIComponent.extend("transener.sistemadeturnos.Component", {
@@ -29,6 +30,13 @@ sap.ui.define([
 
                 // set the device model
                 this.setModel(models.createDeviceModel(), "device");
+
+                // aviso de expiración de sesión por inactividad
+                SessionTimeoutHelper.start(this);
+            },
+
+            exit: function () {
+                SessionTimeoutHelper.stop();
             }
         });
     }
