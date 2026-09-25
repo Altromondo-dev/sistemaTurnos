@@ -1346,6 +1346,71 @@ sap.ui.define([
             if (key === "Grafico") {
                 this._computeChartFromAcciones();
             }
+            if (key === "CRONO") {
+                // se espera a que la solapa se muestre para poder medir la tabla
+                setTimeout(() => this._ajustarAltoFilasCrono(), 0);
+            }
+        },
+
+        // Recalcula el alto de filas cuando se cambia el ancho de "Trabajo a realizar"
+        onColumnResizeCrono: function (oEvent) {
+            if (oEvent.getParameter("column").getId() !== this.byId("toDoWorkCrono").getId()) {
+                return;
+            }
+            this._ajustarAltoFilasCrono(parseInt(oEvent.getParameter("width"), 10));
+        },
+
+        // Ajusta el alto de todas las filas según el texto más largo de "Trabajo a realizar"
+        _ajustarAltoFilasCrono: function (iAnchoColumna) {
+            const MAX_LINEAS = 6;
+            const PADDING_VERTICAL = 16;
+
+            const oTable = this.byId("cronoTreeTable");
+            const oColumn = this.byId("toDoWorkCrono");
+            const oTableDom = oTable && oTable.getDomRef();
+            const oColumnDom = oColumn && oColumn.getDomRef();
+            const oModel = oTable && oTable.getModel("listCronoTreeModel");
+
+            // Si la solapa no está visible no se puede medir; se recalcula al entrar a la solapa
+            if (!oTableDom || !oColumnDom || !oModel) {
+                return;
+            }
+
+            // Ancho disponible para el texto (ancho de columna menos el margen interno de la celda)
+            const oCeldaDom = oTableDom.querySelector('[data-sap-ui-colid="' + oColumn.getId() + '"] .sapUiTableCellInner');
+            const oEstilo = oCeldaDom ? getComputedStyle(oCeldaDom) : null;
+            const iPaddingHorizontal = oEstilo ? parseFloat(oEstilo.paddingLeft) + parseFloat(oEstilo.paddingRight) : 16;
+            const iAnchoTexto = (iAnchoColumna || oColumnDom.offsetWidth) - iPaddingHorizontal;
+
+            // Medidor invisible con la misma fuente que las celdas
+            const oMedidor = document.createElement("div");
+            oMedidor.className = "sapMText";
+            oMedidor.style.cssText = "position:absolute;visibility:hidden;white-space:normal;word-wrap:break-word;width:" + iAnchoTexto + "px";
+            oTableDom.appendChild(oMedidor);
+
+            oMedidor.textContent = "X";
+            const iAltoLinea = oMedidor.offsetHeight;
+
+            // Se miden todos los textos (grupos e hijos), no solo las filas visibles
+            let iLineas = 1;
+            const fnMedir = (aNodos) => {
+                aNodos.forEach((oNodo) => {
+                    if (oNodo.Comments) {
+                        oMedidor.textContent = oNodo.Comments;
+                        iLineas = Math.max(iLineas, Math.round(oMedidor.offsetHeight / iAltoLinea));
+                    }
+                    if (oNodo.children) {
+                        fnMedir(oNodo.children);
+                    }
+                });
+            };
+            fnMedir(oModel.getData() || []);
+            oMedidor.remove();
+
+            iLineas = Math.min(iLineas, MAX_LINEAS);
+
+            // Con una sola línea se vuelve al alto estándar de la tabla
+            oTable.setRowHeight(iLineas > 1 ? iLineas * iAltoLinea + PADDING_VERTICAL : null);
         },
         onSelectTurno: function (oEvent) {
             this.showGlobalBusy("Buscando turnos creados…");
@@ -2570,6 +2635,7 @@ sap.ui.define([
                             oTreeModel.setData(aTreeData);
                             oTreeModel.refresh();
                             this._marcarAdjuntosEnListadoCronologico();
+                            this._ajustarAltoFilasCrono();
 
                             function sortByTurnoAsignado(a, b) {
                                 const toMinutes = (hora) => {
@@ -6431,12 +6497,14 @@ sap.ui.define([
                     const oFilteredModel = new JSONModel(aFilteredData);
                     oTreeTable.setModel(oFilteredModel, "listCronoTreeModel");
                     this._marcarAdjuntosEnListadoCronologico();
+                    this._ajustarAltoFilasCrono();
 
                     console.log("✅ Listado Cronológico creado con adjuntos marcados");
                 } else {
                     const oTreeModel = this.getView().getModel("listCronoTreeModel");
                     oTreeTable.setModel(oTreeModel, "listCronoTreeModel");
                     this._marcarAdjuntosEnListadoCronologico();
+                    this._ajustarAltoFilasCrono();
 
                     console.log("✅ Listado Cronológico creado con adjuntos marcados");
                 }
@@ -6593,6 +6661,7 @@ sap.ui.define([
                 if (oTreeModel) {
                     oTreeTable.setModel(oTreeModel, "listCronoTreeModel");
                     this._marcarAdjuntosEnListadoCronologico();
+                    this._ajustarAltoFilasCrono();
                 }
             }
         },

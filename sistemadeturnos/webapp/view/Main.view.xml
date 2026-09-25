@@ -338,7 +338,7 @@
             parameters: {
                 arrayNames: ['children']
             }
-        }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title" toggleOpenState=".onToggleOpenState">
+        }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title" toggleOpenState=".onToggleOpenState" columnResize=".onColumnResizeCrono">
                                 <t:rowSettingsTemplate>
                                     <t:RowSettings highlight="{path: 'listCronoTreeModel>tramitacionColorFecha', formatter: '.getTramitacionHighlight'}" />
                                 </t:rowSettingsTemplate>
@@ -401,7 +401,7 @@
                                     <t:Column id="toDoWorkCrono" width="450px">
                                         <Label text="{i18n>toDoWork}" />
                                         <t:template>
-                                            <Text text="{listCronoTreeModel>Comments}" wrapping="true" />
+                                            <Text text="{listCronoTreeModel>Comments}" wrapping="true" maxLines="6" tooltip="{listCronoTreeModel>Comments}" />
                                         </t:template>
                                     </t:Column>
 
