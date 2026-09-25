@@ -314,7 +314,7 @@
                                     <t:Column minWidth="250">
                                         <Label text="{i18n>accionComentarios}" />
                                         <t:template>
-                                            <Text text="{AccionesEntregaModel>trabajoRealizar}" textAlign="Center" wrapping="true" />
+                                            <Text text="{AccionesEntregaModel>trabajoRealizar}" wrapping="true" />
                                         </t:template>
                                     </t:Column>
 
