@@ -1963,6 +1963,7 @@ sap.ui.define([
                     if (sAction === "Editar") {
                         this.showGlobalBusy("Cargando turno…");
                         this._resetDefaultTurnoModel();
+                        this._limpiarAccionesEntrega();
 
                         ModelHelper.getModel("enabledModel", oView).setData({
                             btnCrear: true,
@@ -1982,8 +1983,14 @@ sap.ui.define([
                             .catch(() => {
                                 return this.successSelectTurno(oData);
                             })
+                            .then(() => {
+                                // Traer las acciones ya guardadas para ese día
+                                return this._cargarAccionesDesdeBackend(oDateValue);
+                            })
                             .finally(() => {
                                 this.hideGlobalBusy();
+                                // Completar las acciones que falten
+                                this._generarAccionesAutomaticas();
                             });
                     }
                 }
@@ -2082,6 +2089,8 @@ sap.ui.define([
             var oTable = this.byId("turnosTable");
             var oLicencesModel = ModelHelper.getModel("LicencesJsonModel", this.getView());
 
+            this._limpiarAccionesEntrega();
+
             oLicencesModel.setData([]);
             oTable.setBusy(true);
 
@@ -2136,6 +2145,7 @@ sap.ui.define([
                         oTable.setBusy(false);
                         Utils.onCountItems(this.getView(), data);
                         this._updateEditableState();
+                        this._generarAccionesAutomaticas();
                         return;
                     }
 
@@ -2156,6 +2166,7 @@ sap.ui.define([
                             oTable.setBusy(false);
                             Utils.onCountItems(this.getView(), data);
                             this._updateEditableState();
+                            this._generarAccionesAutomaticas();
 
                         })
                         .catch((error) => {
@@ -2164,6 +2175,7 @@ sap.ui.define([
                             oTable.setBusy(false);
                             Utils.onCountItems(this.getView(), data);
                             this._updateEditableState();
+                            this._generarAccionesAutomaticas();
 
                         });
                 })
