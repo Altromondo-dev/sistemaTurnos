@@ -275,3 +275,10 @@ html.sap-desktop .sapMIBar.sapMFooter-CTX {
     color: white !important;
 }
 
+
+/* Solapas a alto completo: el contenido que no es grilla (Resumen, Grafico) puede desplazarse
+   y sin margen inferior, para que las grillas lleguen hasta el footer */
+.fullHeightTabBar.sapMITB .sapMITBContent {
+    overflow-y: auto;
+    padding-bottom: 0;
+}

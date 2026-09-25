@@ -3,13 +3,19 @@
     xmlns="sap.m"
     xmlns:core="sap.ui.core"
     xmlns:t="sap.ui.table"
+    xmlns:rowmodes="sap.ui.table.rowmodes"
     xmlns:dnd="sap.ui.core.dnd"
     xmlns:form="sap.ui.layout.form"
     xmlns:l="sap.ui.layout" displayBlock="true">
     <App>
         <pages>
-            <Page id="page" title="{i18n>title}">
+            <Page id="page" title="{i18n>title}" enableScrolling="false">
+                <!-- Contenedor a alto completo: filtros y búsqueda arriba, las solapas ocupan el resto -->
+                <VBox fitContainer="true">
                 <Panel expandable="true" expanded="true" headerText="Filtros">
+                    <layoutData>
+                        <FlexItemData shrinkFactor="0" />
+                    </layoutData>
                     <HBox class="sapUiSmallMarginTop" justifyContent="End">
                         <!-- Fecha -->
                         <HBox alignItems="Center" class="sapUiSmallMarginEnd">
@@ -80,6 +86,9 @@
                 </Panel>
 
                 <HBox justifyContent="End" class="sapUiSmallMarginBottom">
+                    <layoutData>
+                        <FlexItemData shrinkFactor="0" />
+                    </layoutData>
                     <ToolbarSpacer />
 
                     <Input id="fastSearchInput" placeholder="{i18n>quickSearch}" class="sapUiSmallMarginEnd" width="15rem" />
@@ -87,10 +96,17 @@
                     <Button icon="sap-icon://refresh" press="onRefresh" class="sapUiSmallMarginEnd" />
                 </HBox>
 
-                <IconTabBar id="mainTabBar" select=".onTabSelect">
+                <IconTabBar id="mainTabBar" select=".onTabSelect" stretchContentHeight="true" class="fullHeightTabBar">
+                    <layoutData>
+                        <FlexItemData growFactor="1" minHeight="0" />
+                    </layoutData>
                     <items>
                         <IconTabFilter text="Turno" key="LIC" visible="{viewModel>/isProgramacion}">
                             <t:Table id="turnosTable" selectionMode="None" selectionBehavior="Row" ariaLabelledBy="title2" rows="{LicencesJsonModel>/}" filter=".onColumnFilter">
+                                <!-- Muestra tantas filas como entren en el alto disponible -->
+                                <t:rowMode>
+                                    <rowmodes:Auto minRowCount="5" />
+                                </t:rowMode>
                                 <t:contextMenu>
                                     <Menu>
                                         <!-- Adjuntar archivo -->
@@ -244,6 +260,9 @@
 
                         <IconTabFilter text="Acciones para la entrega ({AccionesEntregaModel>/length})" key="ACCIONES" visible="{viewModel>/isProgramacion}">
                             <t:Table id="accionesEntregaTable" rows="{AccionesEntregaModel>/}" selectionMode="None" alternateRowColors="true">
+                                <t:rowMode>
+                                    <rowmodes:Auto minRowCount="5" />
+                                </t:rowMode>
                                 <!-- MENÚ CONTEXTUAL -->
                                 <t:contextMenu>
                                     <Menu>
@@ -284,7 +303,7 @@
                                     </t:Column>
 
                                     <!-- Columna Descripción -->
-                                    <t:Column width="400px">
+                                    <t:Column minWidth="300">
                                         <Label text="Descripción" />
                                         <t:template>
                                             <Text text="{AccionesEntregaModel>descripcion}" wrapping="true" />
@@ -292,7 +311,7 @@
                                     </t:Column>
 
                                     <!-- Columna Comentarios -->
-                                    <t:Column width="300px">
+                                    <t:Column minWidth="250">
                                         <Label text="{i18n>accionComentarios}" />
                                         <t:template>
                                             <Text text="{AccionesEntregaModel>trabajoRealizar}" textAlign="Center" wrapping="true" />
@@ -325,11 +344,6 @@
                                     </t:Column>
                                 </t:columns>
                             </t:Table>
-
-                            <OverflowToolbar class="sapUiSmallMarginTop">
-                                <ToolbarSpacer />
-                                <Button text="Guardar Acciones" icon="sap-icon://save" type="Emphasized" press="onGuardarAccionesBackend" tooltip="Guardar todas las acciones en el backend" enabled="{editableModel>/isEditable}" />
-                            </OverflowToolbar>
                         </IconTabFilter>
 
                         <IconTabFilter text="Listado Cronologico" key="CRONO">
@@ -339,6 +353,9 @@
                 arrayNames: ['children']
             }
         }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title" toggleOpenState=".onToggleOpenState" columnResize=".onColumnResizeCrono">
+                                <t:rowMode>
+                                    <rowmodes:Auto minRowCount="5" />
+                                </t:rowMode>
                                 <t:rowSettingsTemplate>
                                     <t:RowSettings highlight="{path: 'listCronoTreeModel>tramitacionColorFecha', formatter: '.getTramitacionHighlight'}" />
                                 </t:rowSettingsTemplate>
@@ -467,6 +484,9 @@
                                         arrayNames: ['children']
                                     }
                                 }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title">
+                                <t:rowMode>
+                                    <rowmodes:Auto minRowCount="5" />
+                                </t:rowMode>
                                 <t:columns>
                                     <t:Column width="220px" hAlign="Left">
                                         <Label text="Grupo / Acción" />
@@ -492,7 +512,7 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column width="400px" hAlign="Left">
+                                    <t:Column minWidth="300" hAlign="Left">
                                         <Label text="Descripción" />
                                         <t:template>
                                             <Text text="{= ${accionesTreeModel>_isGroup} ? '' : ${accionesTreeModel>descripcion} }" wrapping="true" visible="{= ${accionesTreeModel>_isGroup} === false }" />
@@ -523,7 +543,7 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column width="300px" hAlign="Left">
+                                    <t:Column minWidth="250" hAlign="Left">
                                         <Label text="{i18n>toDoWork}" />
                                         <t:template>
                                             <Text text="{accionesTreeModel>trabajoRealizar}" wrapping="true" visible="{= ${accionesTreeModel>_isGroup} === false }" />
@@ -676,6 +696,7 @@
                         </IconTabFilter>
                     </items>
                 </IconTabBar>
+                </VBox>
 
                 <footer>
                     <OverflowToolbar>
@@ -699,6 +720,8 @@
                         <ToolbarSpacer />
                         <Text text="V{appVersion>/version}" class="textWhite" />
                         <ToolbarSpacer />
+                        <!-- Solo visible en la solapa "Acciones para la entrega" -->
+                        <Button icon="sap-icon://save" text="{i18n>saveAcciones}" press="onGuardarAccionesBackend" tooltip="Guardar todas las acciones en el backend" enabled="{editableModel>/isEditable}" visible="{= ${tabsControl>/activeTab} === 'ACCIONES' }" />
                         <Button icon="sap-icon://save" text="{i18n>saveTurno}" press="onSaveTurnoPress" enabled="{editableModel>/isEditable}" />
                         <Button icon="sap-icon://create-form" text="{i18n>createTurno}" press="onSearch" enabled="{editableModel>/isEditable}" />
                         <Button icon="sap-icon://email" text="{i18n>sendEmail}" press="onSendEmailPress" enabled="{editableModel>/isEditable}" />

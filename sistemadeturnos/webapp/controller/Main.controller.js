@@ -1363,7 +1363,6 @@ sap.ui.define([
         // Ajusta el alto de todas las filas según el texto más largo de "Trabajo a realizar"
         _ajustarAltoFilasCrono: function (iAnchoColumna) {
             const MAX_LINEAS = 6;
-            const PADDING_VERTICAL = 16;
 
             const oTable = this.byId("cronoTreeTable");
             const oColumn = this.byId("toDoWorkCrono");
@@ -1409,8 +1408,9 @@ sap.ui.define([
 
             iLineas = Math.min(iLineas, MAX_LINEAS);
 
-            // Con una sola línea se vuelve al alto estándar de la tabla
-            oTable.setRowHeight(iLineas > 1 ? iLineas * iAltoLinea + PADDING_VERTICAL : null);
+            // El alto se define en el modo de filas de la tabla (alto del contenido, sin márgenes).
+            // Con una sola línea se vuelve al alto estándar.
+            oTable.getRowMode().setRowContentHeight(iLineas > 1 ? iLineas * iAltoLinea : null);
         },
         onSelectTurno: function (oEvent) {
             this.showGlobalBusy("Buscando turnos creados…");
