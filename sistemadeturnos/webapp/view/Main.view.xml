@@ -807,7 +807,11 @@
 
                                     <!-- INI MOD TRNS #SistemaDeTurno-11 -->
                                     <!-- Total de maniobras: cantidad de filas de reporteTable (ReporteModel) -->
-                                    <Title id="reporteTotalManiobras" text="{= 'TOTAL DE MANIOBRAS: ' + (${ReporteModel>/} ? ${ReporteModel>/}.length : 0) }" level="H3" titleStyle="H3" class="sapUiSmallMarginTop sapUiSmallMarginBottom" />
+                                    <!-- <Title id="reporteTotalManiobras" text="{= 'TOTAL DE MANIOBRAS: ' + (${ReporteModel>/} ? ${ReporteModel>/}.length : 0) }" level="H3" titleStyle="H3" class="sapUiSmallMarginTop sapUiSmallMarginBottom" /> -->
+                                    <!-- Mismo control y estilo que reporteDateRange (Text dentro de HBox sapUiTinyMarginBottom) -->
+                                    <HBox class="sapUiTinyMarginBottom">
+                                        <Text id="reporteTotalManiobras" text="{= 'TOTAL DE MANIOBRAS: ' + (${ReporteModel>/} ? ${ReporteModel>/}.length : 0) }" />
+                                    </HBox>
                                     <!-- FIN MOD TRNS #SistemaDeTurno-11 -->
 
                                     <HBox class="sapUiTinyMarginBottom">

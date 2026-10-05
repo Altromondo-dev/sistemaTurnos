@@ -90,6 +90,23 @@ sap.ui.define([
         return { category, duration, condition };
     }
 
+    // INI MOD TRNS #SistemaDeTurno-11
+    // Fecha de turno → "dd/MM/yyyy". Mismo criterio que TurnosService._claveFechaTurno
+    // (no se reutiliza porque TurnosService depende de Utils): las fechas OData (Edm.DateTime)
+    // llegan a las 00:00 UTC → día UTC; las del DatePicker a las 00:00 locales → día local.
+    function formatFechaTurno(vFecha) {
+        const d = vFecha instanceof Date ? vFecha : new Date(vFecha);
+        if (isNaN(d.getTime())) return "";
+
+        const bMedianocheUTC = d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+        const iDia = bMedianocheUTC ? d.getUTCDate() : d.getDate();
+        const iMes = (bMedianocheUTC ? d.getUTCMonth() : d.getMonth()) + 1;
+        const iAnio = bMedianocheUTC ? d.getUTCFullYear() : d.getFullYear();
+
+        return String(iDia).padStart(2, "0") + "/" + String(iMes).padStart(2, "0") + "/" + iAnio;
+    }
+    // FIN MOD TRNS #SistemaDeTurno-11
+
     return {
 
         // Exportamos para que TurnosService lo use en assignShiftsToLicences
@@ -158,11 +175,14 @@ sap.ui.define([
                     // Formatear fecha
                     var sFecha = "";
                     if (item.Dateturno) {
-                        var oDate = new Date(item.Dateturno);
-                        var day = oDate.getDate().toString().padStart(2, '0');
-                        var month = (oDate.getMonth() + 1).toString().padStart(2, '0');
-                        var year = oDate.getFullYear();
-                        sFecha = day + '/' + month + '/' + year;
+                        // INI MOD TRNS #SistemaDeTurno-11
+                        // var oDate = new Date(item.Dateturno);
+                        // var day = oDate.getDate().toString().padStart(2, '0');
+                        // var month = (oDate.getMonth() + 1).toString().padStart(2, '0');
+                        // var year = oDate.getFullYear();
+                        // sFecha = day + '/' + month + '/' + year;
+                        sFecha = formatFechaTurno(item.Dateturno);
+                        // FIN MOD TRNS #SistemaDeTurno-11
                     }
 
                     // Tipo de intervención
@@ -259,6 +279,15 @@ sap.ui.define([
                     sMaxHora = aHoras[aHoras.length - 1];
                 }
                 sFecha = aReporteDataUnica[0].Fecha;
+                // INI MOD TRNS #SistemaDeTurno-11
+                // El rango es del turno en pantalla: se usa el día del DatePicker
+                // (en turno nuevo las licencias no traen Dateturno)
+                var oDatePicker = oView.byId ? oView.byId("date") : null;
+                var oFechaPicker = oDatePicker && oDatePicker.getDateValue();
+                if (oFechaPicker) {
+                    sFecha = formatFechaTurno(oFechaPicker);
+                }
+                // FIN MOD TRNS #SistemaDeTurno-11
             }
 
             var oDateRangeControl = oView.byId ? oView.byId("reporteDateRange") : null;
