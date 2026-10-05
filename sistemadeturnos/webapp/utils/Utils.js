@@ -186,7 +186,13 @@ sap.ui.define([
                         Hora: sHora,
                         TipoIntervencion: sTipoIntervencion,
                         Condicion: info.condition,
-                        Comentarios: item.Comentarios || ""
+                        // INI MOD TRNS #SistemaDeTurno-12-13
+                        // Comentarios: item.Comentarios || ""
+                        Comentarios: item.Comentarios || "",
+                        // Clave de deduplicación: una fila por equipo, salvo las desacopladas (fila propia).
+                        // Se basa en Desacoplado y no en Grupo porque los reportes no rearman grupos.
+                        _claveGrupo: item.Desacoplado === true ? "_Desacoplado_" + item.Id : (item.Equnr || "")
+                        // FIN MOD TRNS #SistemaDeTurno-12-13
                     });
                 }
             });
@@ -218,10 +224,16 @@ sap.ui.define([
             // Deduplicar por equipo: un solo registro por Equnr
             const oEquiposVistos = {};
             const aReporteDataUnica = aReporteData.filter(function (item) {
-                if (oEquiposVistos[item.Equipo]) {
+                // INI MOD TRNS #SistemaDeTurno-12-13
+                // if (oEquiposVistos[item.Equipo]) {
+                //     return false;
+                // }
+                // oEquiposVistos[item.Equipo] = true;
+                if (oEquiposVistos[item._claveGrupo]) {
                     return false;
                 }
-                oEquiposVistos[item.Equipo] = true;
+                oEquiposVistos[item._claveGrupo] = true;
+                // FIN MOD TRNS #SistemaDeTurno-12-13
                 return true;
             });
 

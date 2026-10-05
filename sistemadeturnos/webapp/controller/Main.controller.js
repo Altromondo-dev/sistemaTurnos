@@ -3,7 +3,10 @@ jQuery.sap.require("transener.sistemadeturnos.libs.xlsx");
 jQuery.sap.require("transener.sistemadeturnos.libs.jszip");
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
-    "sap/m/MessageToast",
+    // INI MOD TRNS #SistemaDeTurno-6
+    // "sap/m/MessageToast",
+    "transener/sistemadeturnos/utils/MessageHelper",
+    // FIN MOD TRNS #SistemaDeTurno-6
     "sap/m/MessageBox",
     "sap/ui/core/library",
     "sap/ui/model/Filter",
@@ -28,7 +31,10 @@ sap.ui.define([
     "transener/sistemadeturnos/utils/SocietyHelper"
 
 
-], function (Controller, MessageToast, MessageBox, CoreLibrary, Filter, FilterOperator, JSONModel, Fragment,
+// INI MOD TRNS #SistemaDeTurno-6
+// ], function (Controller, MessageToast, MessageBox, CoreLibrary, Filter, FilterOperator, JSONModel, Fragment,
+], function (Controller, MessageHelper, MessageBox, CoreLibrary, Filter, FilterOperator, JSONModel, Fragment,
+// FIN MOD TRNS #SistemaDeTurno-6
     //utils
     ModelHelper, FormatHelper, Utils, DateHelper,
     //services
@@ -318,6 +324,20 @@ sap.ui.define([
                 }, 0);
             });
 
+            // INI MOD TRNS #SistemaDeTurno-7
+            // Textos para el filtro de columna (lo que se ve en cada celda). El hijo lleva también
+            // el texto del grupo, para que al filtrar por "N LLTT" el grupo se pueda expandir
+            aGrupos.forEach(grupo => {
+                const sTextoGrupo = this.formatLicenciasCount(grupo.idLicencia);
+                grupo._txtGrupoAccion = sTextoGrupo;
+                grupo.children.forEach(h => {
+                    h._txtGrupoAccion = (h.accion || "") + " " + sTextoGrupo;
+                    h._txtPeriodo = h.period === "D" ? "Diaria" : (h.period === "C" ? "Continua" : (h.period || ""));
+                    h._txtFechaInicio = this.formatSolbeg(h.solbeg);
+                });
+            });
+            // FIN MOD TRNS #SistemaDeTurno-7
+
             oView.getModel("accionesTreeModel").setData(aGrupos);
         },
 
@@ -367,7 +387,10 @@ sap.ui.define([
             }
 
             if (!oBindingContext) {
-                MessageToast.show("No se pudo obtener el contexto de la fila. Por favor, seleccione una fila.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener el contexto de la fila. Por favor, seleccione una fila.");
+                MessageHelper.show("No se pudo obtener el contexto de la fila. Por favor, seleccione una fila.");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -527,7 +550,10 @@ sap.ui.define([
             const bSelected = oCheckBox.getSelected();
 
             if (!sKey) {
-                MessageToast.show("Error: Configuración incorrecta del checkbox");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Error: Configuración incorrecta del checkbox");
+                MessageHelper.show("Error: Configuración incorrecta del checkbox");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -552,7 +578,10 @@ sap.ui.define([
 
             if (aTodasLasAcciones.length === 0) {
                 this.hideGlobalBusy();
-                MessageToast.show("No hay acciones para guardar");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No hay acciones para guardar");
+                MessageHelper.show("No hay acciones para guardar");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -581,7 +610,10 @@ sap.ui.define([
                     const oAccionesModel = oView.getModel("AccionesEntregaModel");
                     oAccionesModel.refresh();
 
-                    MessageToast.show("Cambios guardados correctamente");
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Cambios guardados correctamente");
+                    MessageHelper.show("Cambios guardados correctamente");
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 })
                 .catch((error) => {
                     this.hideGlobalBusy();
@@ -610,7 +642,10 @@ sap.ui.define([
             const oLicencia = this._currentLicenciaEntrega;
 
             if (!oLicencia) {
-                MessageToast.show("Error: No se pudo obtener la licencia");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Error: No se pudo obtener la licencia");
+                MessageHelper.show("Error: No se pudo obtener la licencia");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -618,7 +653,10 @@ sap.ui.define([
             const aCodigosSeleccionados = Object.keys(oAccionesTemp);
 
             if (aCodigosSeleccionados.length === 0) {
-                MessageToast.show("Debe seleccionar al menos una acción");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Debe seleccionar al menos una acción");
+                MessageHelper.show("Debe seleccionar al menos una acción");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -679,7 +717,10 @@ sap.ui.define([
             const sPath = this._currentBindingContextEntrega.getPath();
             oLicencesModel.setProperty(sPath + "/accionSeleccionada", true);
 
-            MessageToast.show(`${aCodigosSeleccionados.length} acción(es) guardada(s) para ${sIdsGrupo}`);
+            // INI MOD TRNS #SistemaDeTurno-6
+            // MessageToast.show(`${aCodigosSeleccionados.length} acción(es) guardada(s) para ${sIdsGrupo}`);
+            MessageHelper.show(`${aCodigosSeleccionados.length} acción(es) guardada(s) para ${sIdsGrupo}`);
+            // FIN MOD TRNS #SistemaDeTurno-6
 
             if (this._oAccionEntregaPopover) {
                 this._oAccionEntregaPopover.close();
@@ -832,7 +873,10 @@ sap.ui.define([
             const sNewValue = oEvent.getParameter("value");
 
             if (!sNewValue || !/^\d{2}:\d{2}$/.test(sNewValue)) {
-                MessageToast.show("Formato de hora inválido. Use HH:mm");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Formato de hora inválido. Use HH:mm");
+                MessageHelper.show("Formato de hora inválido. Use HH:mm");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -903,10 +947,16 @@ sap.ui.define([
 
             if (iExistingIndex >= 0) {
                 aAcciones[iExistingIndex] = oAccionData;
-                MessageToast.show(`Acción actualizada a "${sAccion}" para ${oLicencia.Id}`);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show(`Acción actualizada a "${sAccion}" para ${oLicencia.Id}`);
+                MessageHelper.show(`Acción actualizada a "${sAccion}" para ${oLicencia.Id}`);
+                // FIN MOD TRNS #SistemaDeTurno-6
             } else {
                 aAcciones.push(oAccionData);
-                MessageToast.show(`Acción "${sAccion}" agregada para ${oLicencia.Id}`);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show(`Acción "${sAccion}" agregada para ${oLicencia.Id}`);
+                MessageHelper.show(`Acción "${sAccion}" agregada para ${oLicencia.Id}`);
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
 
             oAccionesModel.setData(aAcciones);
@@ -926,7 +976,10 @@ sap.ui.define([
             const oLicencia = this._currentLicenciaEntrega;
 
             if (!oLicencia) {
-                MessageToast.show("Error: No se pudo obtener la licencia");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Error: No se pudo obtener la licencia");
+                MessageHelper.show("Error: No se pudo obtener la licencia");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -947,7 +1000,10 @@ sap.ui.define([
             // Agregar al modelo de acciones
             const oAccionesModel = oView.getModel("AccionesEntregaModel");
             if (!oAccionesModel) {
-                MessageToast.show("Error: Modelo no encontrado");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Error: Modelo no encontrado");
+                MessageHelper.show("Error: Modelo no encontrado");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -956,10 +1012,16 @@ sap.ui.define([
 
             if (iExistingIndex >= 0) {
                 aAcciones[iExistingIndex] = oAccionData;
-                MessageToast.show(`Acción actualizada a "${sAccion}"`);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show(`Acción actualizada a "${sAccion}"`);
+                MessageHelper.show(`Acción actualizada a "${sAccion}"`);
+                // FIN MOD TRNS #SistemaDeTurno-6
             } else {
                 aAcciones.push(oAccionData);
-                MessageToast.show(`Acción "${sAccion}" agregada`);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show(`Acción "${sAccion}" agregada`);
+                MessageHelper.show(`Acción "${sAccion}" agregada`);
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
 
             oAccionesModel.setData(aAcciones);
@@ -980,7 +1042,10 @@ sap.ui.define([
             const oBindingContext = oButton.getBindingContext("AccionesEntregaModel");
 
             if (!oBindingContext) {
-                MessageToast.show("No se pudo obtener el contexto de la acción");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener el contexto de la acción");
+                MessageHelper.show("No se pudo obtener el contexto de la acción");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -1064,7 +1129,10 @@ sap.ui.define([
                                         oAccionesModel.setData(aAccionesOrdenadas);
                                         this._buildAccionesTreeModel();
 
-                                        MessageToast.show("Acción eliminada");
+                                        // INI MOD TRNS #SistemaDeTurno-6
+                                        // MessageToast.show("Acción eliminada");
+                                        MessageHelper.show("Acción eliminada");
+                                        // FIN MOD TRNS #SistemaDeTurno-6
                                     }
                                 }
                             }
@@ -1156,7 +1224,10 @@ sap.ui.define([
                         }
                     }
 
-                    MessageToast.show(`Acción eliminada para ${aIdsDelGrupo.length} licencia(s)`);
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show(`Acción eliminada para ${aIdsDelGrupo.length} licencia(s)`);
+                    MessageHelper.show(`Acción eliminada para ${aIdsDelGrupo.length} licencia(s)`);
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 },
                 error: (oError) => {
                     this.hideGlobalBusy();
@@ -1180,7 +1251,10 @@ sap.ui.define([
                         let aAcciones = oAccionesModel.getData();
                         aAcciones.splice(iIndex, 1);
                         oAccionesModel.setData(aAcciones);
-                        MessageToast.show("Acción eliminada");
+                        // INI MOD TRNS #SistemaDeTurno-6
+                        // MessageToast.show("Acción eliminada");
+                        MessageHelper.show("Acción eliminada");
+                        // FIN MOD TRNS #SistemaDeTurno-6
                     } else {
                         MessageBox.error(sErrorMsg);
                     }
@@ -1248,6 +1322,357 @@ sap.ui.define([
 
             oLicencesModel.refresh();
         },
+
+        // INI MOD TRNS #SistemaDeTurno-8-9-10
+        // ---------------- REACTIVIDAD TURNO → ACCIONES PARA LA ENTREGA / RESUMEN ----------------
+
+        // Punto de enganche único: se llama al final de cada handler que modifica la solapa Turno.
+        // vGruposAfectados: clave de grupo, array de claves, o null para recalcular todos.
+        _onTurnoModificado: function (vGruposAfectados) {
+            const oView = this.getView();
+            const oLicencesModel = oView.getModel("LicencesJsonModel");
+
+            this._sincronizarAccionesConTurno(vGruposAfectados);
+            Utils.onCountItems(oView, oLicencesModel.getData() || []);
+        },
+
+        // Los comentarios solo se muestran en el Resumen, no afectan las acciones
+        onComentariosChange: function () {
+            const oView = this.getView();
+            Utils.onCountItems(oView, oView.getModel("LicencesJsonModel").getData() || []);
+        },
+
+        // Foto de turno y grupo de cada licencia, para detectar qué cambió en un handler
+        _snapshotGruposTurno: function (aLicences) {
+            const mEstado = {};
+            (aLicences || []).forEach(function (lic) {
+                mEstado[lic.Id] = {
+                    turno: lic.TurnoAsignado || "",
+                    grupo: lic.Grupo || lic.Id
+                };
+            });
+            return mEstado;
+        },
+
+        // Grupos afectados = grupos actuales de las licencias que cambiaron de turno o de grupo
+        // (incluye la cascada) y de sus compañeros de grupo anteriores (acople/desacople).
+        // aIdsForzados: licencias editadas cuyo cambio ya estaba en el modelo antes de la foto
+        // (el binding two-way del TimePicker actualiza el modelo antes del evento change).
+        _getGruposAfectados: function (mAntes, aLicences, aIdsForzados) {
+            const oIdsCambiados = new Set(aIdsForzados || []);
+
+            aLicences.forEach(function (lic) {
+                const oAntes = mAntes[lic.Id];
+                if (!oAntes ||
+                    oAntes.turno !== (lic.TurnoAsignado || "") ||
+                    oAntes.grupo !== (lic.Grupo || lic.Id)) {
+                    oIdsCambiados.add(lic.Id);
+                }
+            });
+
+            const oGruposAntes = new Set();
+            oIdsCambiados.forEach(function (sId) {
+                if (mAntes[sId]) {
+                    oGruposAntes.add(mAntes[sId].grupo);
+                }
+            });
+
+            const oAfectados = new Set();
+            aLicences.forEach(function (lic) {
+                const bCambio = oIdsCambiados.has(lic.Id);
+                const bCompaneroAnterior = mAntes[lic.Id] && oGruposAntes.has(mAntes[lic.Id].grupo);
+                if (bCambio || bCompaneroAnterior) {
+                    oAfectados.add(lic.Grupo || lic.Id);
+                }
+            });
+
+            return Array.from(oAfectados);
+        },
+
+        // Mismas acciones que _generarAccionesAutomaticas según la categoría
+        _getAccionesAutomaticasDef: function (bEsConsignacion) {
+            const aAcciones = [
+                { codigo: "SOL TEC", descripcion: "El técnico confirmará los trabajos al COT" },
+                { codigo: "AUT COC", descripcion: "El COC y agentes involucrados autorizan" },
+                { codigo: "INI MAN", descripcion: "Comienzo de maniobras - F/S Programado" },
+                { codigo: "COL PAT", descripcion: "El Técnico confirmará la colocación de PAT" },
+                { codigo: "FIN MAN", descripcion: "Finalización de maniobras - Entrega LT" },
+                { codigo: "FIN LT", descripcion: "El Técnico confirmará la finalización de los trabajos" },
+                { codigo: "RET PAT", descripcion: "El Técnico confirmará el retiro de PAT" },
+                { codigo: "MAN PES", descripcion: "El Técnico confirmará la normalización de la instalación - El COT comienza las maniobras para la PES" },
+                { codigo: "PES", descripcion: "Puesta en servicio efectivo" }
+            ];
+
+            if (bEsConsignacion) {
+                return aAcciones;
+            }
+
+            // Maniobras sin consignación: sin COL PAT ni RET PAT
+            return aAcciones.filter(a => a.codigo !== "COL PAT" && a.codigo !== "RET PAT");
+        },
+
+        _getIdsDeAccion: function (oAccion) {
+            return (oAccion.idLicencia || "").split(" / ").map(id => id.trim()).filter(Boolean);
+        },
+
+        // Copia de una acción para una nueva composición de grupo (acople/desacople).
+        // aOrigenes: todas las acciones del mismo código que se fusionan (por defecto solo oBase).
+        _clonarAccionParaIds: function (oBase, aIds, aOrigenes) {
+            const aFuentes = aOrigenes || [oBase];
+            const oClon = Object.assign({}, oBase);
+
+            oClon.idLicencia = aIds.join(" / ");
+            oClon._idsDelGrupo = aIds.slice();
+            if (!aIds.includes(oClon.idLicenciaOriginal)) {
+                oClon.idLicenciaOriginal = aIds[0];
+            }
+            if (!aIds.includes(oClon._licenciaId)) {
+                oClon._licenciaId = aIds[0];
+            }
+
+            // Adjuntos: solo los de las licencias que quedan en esta composición
+            oClon.Attachments = [];
+            aFuentes.forEach(oFuente => {
+                (oFuente.Attachments || []).forEach(att => {
+                    const aIdsAdjunto = [att.Id].concat(att._idsCompartidos || []);
+                    if (aIdsAdjunto.some(id => aIds.includes(id)) && !oClon.Attachments.includes(att)) {
+                        oClon.Attachments.push(att);
+                    }
+                });
+            });
+
+            // Guardada solo si cada ID ya tiene su registro en backend (UPDATE por ID).
+            // Si hay algún ID sin registro (acople mixto o licencia nueva) → CREATE bulk (D1).
+            oClon._estadoGuardado = aIds.every(id => aFuentes.some(oFuente =>
+                oFuente._estadoGuardado && this._getIdsDeAccion(oFuente).includes(id)
+            ));
+
+            // Al fusionar varias acciones sus registros pueden tener horas distintas:
+            // se fuerza la detección de cambio para que el guardado actualice todos los IDs.
+            if (oBase._snapshotOriginal) {
+                oClon._snapshotOriginal = Object.assign({}, oBase._snapshotOriginal);
+                if (aFuentes.length > 1) {
+                    oClon._snapshotOriginal.turnoEntrega = null;
+                }
+            }
+
+            return oClon;
+        },
+
+        _crearAccionAutomatica: function (oDef, oLicenciaPrincipal, aIdsGrupo, sTurnoCalculado) {
+            const sDescripcionLarga = this._getDescripcionDesdeCategologo(oDef.codigo);
+
+            return {
+                accion: oDef.codigo,
+                descripcion: oDef.descripcion,
+                descripcionLarga: sDescripcionLarga || oDef.descripcion,
+                idLicencia: aIdsGrupo.join(" / "),
+                idLicenciaOriginal: oLicenciaPrincipal.Id,
+                equipo: oLicenciaPrincipal.Equnr || "",
+                equipoCompleto: oLicenciaPrincipal.EquipoCompleto || oLicenciaPrincipal.Equnr || "",
+                trabajoRealizar: sDescripcionLarga || oDef.descripcion,
+                turnoEntrega: sTurnoCalculado,
+                estado: oLicenciaPrincipal.Licstat || "01",
+                condicion: oLicenciaPrincipal.Jobcond || "01",
+                equstat: oLicenciaPrincipal.Equstat || "A",
+                empresa: oLicenciaPrincipal.Empresa || "100",
+                tipo: oLicenciaPrincipal.Tipo || "L",
+                anio: oLicenciaPrincipal.Anio || new Date().getFullYear().toString(),
+                period: oLicenciaPrincipal.Period || "",
+                solbeg: oLicenciaPrincipal.Solbeg || null,
+                dateturno: oLicenciaPrincipal.Dateturno || null,
+                _licenciaId: oLicenciaPrincipal.Id,
+                _idsDelGrupo: aIdsGrupo.slice(),
+                _estadoGuardado: false,
+                _snapshotOriginal: {
+                    turnoEntrega: sTurnoCalculado,
+                    attachmentsCount: 0
+                },
+                Attachments: []
+            };
+        },
+
+        // Recalcula en vivo las acciones para la entrega de los grupos afectados (silenciosa).
+        // - Recalcula siempre la hora con _calcularHorarioAccion (pisa ediciones manuales).
+        // - Crea las acciones automáticas que falten y rearma idLicencia ante acople/desacople.
+        // - Descarta las acciones de licencias que ya no están (recálculo total).
+        // - Licencias sin maniobras: solo recalcula sus acciones manuales, no crea (D2).
+        // - Grupo sin turno: deja sus acciones como están (D3).
+        _sincronizarAccionesConTurno: function (vGruposAfectados) {
+            const oView = this.getView();
+            const oLicencesModel = oView.getModel("LicencesJsonModel");
+            const oAccionesModel = oView.getModel("AccionesEntregaModel");
+
+            if (!oLicencesModel || !oAccionesModel) {
+                return;
+            }
+
+            const aLicencias = oLicencesModel.getData() || [];
+            const aAccionesExistentes = oAccionesModel.getData() || [];
+            const bTodos = vGruposAfectados === null || vGruposAfectados === undefined;
+            const oGruposAfectados = new Set(bTodos ? [] : [].concat(vGruposAfectados));
+
+            if (!bTodos && oGruposAfectados.size === 0) {
+                return;
+            }
+
+            const fnInfo = lic => Utils.getShiftInfo(lic).category;
+            const fnEsConManiobras = lic => ["ConsignacionLinea", "ConsignacionEquipo", "ManiobrasSinConsignacion"].includes(fnInfo(lic));
+            const fnEsConsignacion = lic => ["ConsignacionLinea", "ConsignacionEquipo"].includes(fnInfo(lic));
+
+            // 1) Grupos actuales: con maniobras y sin maniobras por separado (igual que la generación)
+            const mGrupos = {};
+            aLicencias.forEach(lic => {
+                const sGrupo = lic.Grupo || lic.Id;
+                const bConManiobras = fnEsConManiobras(lic);
+                const sClave = sGrupo + (bConManiobras ? "" : "|sinManiobras");
+
+                if (!mGrupos[sClave]) {
+                    mGrupos[sClave] = { grupo: sGrupo, conManiobras: bConManiobras, licencias: [] };
+                }
+                mGrupos[sClave].licencias.push(lic);
+            });
+
+            // 2) Grupos a reconstruir: afectados y con turno asignado
+            const aGruposReconstruir = Object.values(mGrupos).filter(g =>
+                (bTodos || oGruposAfectados.has(g.grupo)) &&
+                (g.licencias[0].TurnoAsignado || "").trim() !== ""
+            );
+
+            const oIdsReconstruir = new Set();
+            aGruposReconstruir.forEach(g => g.licencias.forEach(lic => oIdsReconstruir.add(lic.Id)));
+            const oIdsVigentes = new Set(aLicencias.map(lic => lic.Id));
+
+            // 3) Acciones que tocan grupos a reconstruir → origen; el resto se conserva
+            const aAccionesResultado = [];
+            const aAccionesOrigen = [];
+
+            aAccionesExistentes.forEach(oAccion => {
+                const aIds = this._getIdsDeAccion(oAccion);
+
+                if (aIds.some(id => oIdsReconstruir.has(id))) {
+                    aAccionesOrigen.push(oAccion);
+
+                    // Parte de la acción que queda fuera de los grupos reconstruidos (p. ej. grupo sin turno)
+                    const aIdsRestantes = aIds.filter(id => !oIdsReconstruir.has(id) && oIdsVigentes.has(id));
+                    if (aIdsRestantes.length > 0) {
+                        aAccionesResultado.push(this._clonarAccionParaIds(oAccion, aIdsRestantes));
+                    }
+                } else if (bTodos) {
+                    // Recálculo total: descartar los IDs de licencias que ya no están
+                    const aIdsEnTurno = aIds.filter(id => oIdsVigentes.has(id));
+                    if (aIdsEnTurno.length === aIds.length) {
+                        aAccionesResultado.push(oAccion);
+                    } else if (aIdsEnTurno.length > 0) {
+                        aAccionesResultado.push(this._clonarAccionParaIds(oAccion, aIdsEnTurno));
+                    }
+                } else {
+                    aAccionesResultado.push(oAccion);
+                }
+            });
+
+            // 4) Reconstruir las acciones de cada grupo afectado
+            aGruposReconstruir.forEach(g => {
+                const oLicenciaPrincipal = g.licencias[0];
+                const aIdsGrupo = g.licencias.map(lic => lic.Id);
+                const sTurnoBase = oLicenciaPrincipal.TurnoAsignado;
+
+                const aOrigenGrupo = aAccionesOrigen.filter(a =>
+                    this._getIdsDeAccion(a).some(id => aIdsGrupo.includes(id))
+                );
+
+                const aDefs = g.conManiobras
+                    ? this._getAccionesAutomaticasDef(fnEsConsignacion(oLicenciaPrincipal))
+                    : [];
+
+                // Códigos automáticos + los que ya tenga el grupo (agregados a mano desde el popover)
+                const aCodigos = aDefs.map(d => d.codigo);
+                aOrigenGrupo.forEach(a => {
+                    if (!aCodigos.includes(a.accion)) {
+                        aCodigos.push(a.accion);
+                    }
+                });
+
+                aCodigos.forEach(sCodigo => {
+                    const sTurnoCalculado = this._calcularHorarioAccion(sCodigo, oLicenciaPrincipal, sTurnoBase);
+                    const aOrigenCodigo = aOrigenGrupo.filter(a => a.accion === sCodigo);
+                    let oAccion;
+
+                    if (aOrigenCodigo.length === 0) {
+                        oAccion = this._crearAccionAutomatica(
+                            aDefs.find(d => d.codigo === sCodigo), oLicenciaPrincipal, aIdsGrupo, sTurnoCalculado
+                        );
+                    } else {
+                        const aIdsOrigen = this._getIdsDeAccion(aOrigenCodigo[0]);
+                        const bMismaComposicion = aOrigenCodigo.length === 1 &&
+                            aIdsOrigen.length === aIdsGrupo.length &&
+                            aIdsOrigen.every(id => aIdsGrupo.includes(id));
+
+                        // Misma composición: se reutiliza el objeto (conserva adjuntos y flags de guardado)
+                        oAccion = bMismaComposicion
+                            ? aOrigenCodigo[0]
+                            : this._clonarAccionParaIds(aOrigenCodigo[0], aIdsGrupo, aOrigenCodigo);
+                        oAccion.turnoEntrega = sTurnoCalculado;
+                    }
+
+                    aAccionesResultado.push(oAccion);
+                });
+            });
+
+            // 5) Actualizar modelos
+            const aAccionesOrdenadas = this._ordenarAccionesPorGrupoYHora(aAccionesResultado);
+            oAccionesModel.setData(aAccionesOrdenadas);
+            this._buildAccionesTreeModel();
+        },
+
+        // Cantidad de acciones pendientes de guardar, con el mismo criterio que _saveAccionesEnBackendOptimizado
+        _contarAccionesSinGuardar: function () {
+            const oAccionesModel = this.getView().getModel("AccionesEntregaModel");
+            const aAcciones = (oAccionesModel && oAccionesModel.getData()) || [];
+
+            return aAcciones.filter(accion => {
+                const bCambioTurno = !accion._snapshotOriginal ||
+                    accion.turnoEntrega !== accion._snapshotOriginal.turnoEntrega;
+                const bAdjuntoPendiente = (accion.Attachments || []).some(att =>
+                    !att._guardado || (att._snapshotOriginal && att.Attachment !== att._snapshotOriginal.Attachment)
+                );
+                return !accion._estadoGuardado || bCambioTurno || bAdjuntoPendiente;
+            }).length;
+        },
+
+        // Antes de Guardar Turno: si hay acciones sin guardar, pregunta si también se guardan
+        _confirmarGuardadoAcciones: function (fnGuardarTurno) {
+            const iPendientes = this._contarAccionesSinGuardar();
+            this._guardarAccionesTrasTurno = false;
+
+            if (iPendientes === 0) {
+                fnGuardarTurno();
+                return;
+            }
+
+            MessageBox.warning(
+                `Hay ${iPendientes} acción(es) para la entrega sin guardar.\n\n¿Desea guardarlas también?`,
+                {
+                    title: "Acciones para la entrega sin guardar",
+                    actions: [MessageBox.Action.YES, MessageBox.Action.NO],
+                    emphasizedAction: MessageBox.Action.YES,
+                    onClose: (sAction) => {
+                        this._guardarAccionesTrasTurno = sAction === MessageBox.Action.YES;
+                        fnGuardarTurno();
+                    }
+                }
+            );
+        },
+
+        // Se llama cuando termina el guardado del turno
+        _encadenarGuardadoAcciones: function () {
+            if (!this._guardarAccionesTrasTurno) {
+                return;
+            }
+            this._guardarAccionesTrasTurno = false;
+            this.onGuardarAccionesBackend();
+        },
+        // FIN MOD TRNS #SistemaDeTurno-8-9-10
         //------------------------------------------------------------------------------
 
         cargarModelos: function () {
@@ -1346,72 +1771,197 @@ sap.ui.define([
             if (key === "Grafico") {
                 this._computeChartFromAcciones();
             }
-            if (key === "CRONO") {
+            // INI MOD TRNS #SistemaDeTurno-1
+            // Se ajusta el alto de filas de la tabla de cada solapa, no solo del Listado Cronológico
+            // if (key === "CRONO") {
+            //     // se espera a que la solapa se muestre para poder medir la tabla
+            //     setTimeout(() => this._ajustarAltoFilasCrono(), 0);
+            // }
+            const mTablaPorSolapa = {
+                LIC: "turnosTable",
+                ACCIONES: "accionesEntregaTable",
+                CRONO: "cronoTreeTable",
+                ACCIONES_CRONO: "accionesCronoTreeTable",
+                REPORTE: "reporteTable"
+            };
+            if (mTablaPorSolapa[key]) {
                 // se espera a que la solapa se muestre para poder medir la tabla
-                setTimeout(() => this._ajustarAltoFilasCrono(), 0);
+                setTimeout(() => this._ajustarAltoFilasTabla(mTablaPorSolapa[key]), 0);
             }
+            // FIN MOD TRNS #SistemaDeTurno-1
         },
 
-        // Recalcula el alto de filas cuando se cambia el ancho de "Trabajo a realizar"
-        onColumnResizeCrono: function (oEvent) {
-            if (oEvent.getParameter("column").getId() !== this.byId("toDoWorkCrono").getId()) {
+        // INI MOD TRNS #SistemaDeTurno-1
+        // Se reemplazan por onColumnResizeAltoFilas / _ajustarAltoFilas, que sirven para todas las tablas
+        // // Recalcula el alto de filas cuando se cambia el ancho de "Trabajo a realizar"
+        // onColumnResizeCrono: function (oEvent) {
+        //     if (oEvent.getParameter("column").getId() !== this.byId("toDoWorkCrono").getId()) {
+        //         return;
+        //     }
+        //     this._ajustarAltoFilasCrono(parseInt(oEvent.getParameter("width"), 10));
+        // },
+        //
+        // // Ajusta el alto de todas las filas según el texto más largo de "Trabajo a realizar"
+        // _ajustarAltoFilasCrono: function (iAnchoColumna) {
+        //     const MAX_LINEAS = 6;
+        //
+        //     const oTable = this.byId("cronoTreeTable");
+        //     const oColumn = this.byId("toDoWorkCrono");
+        //     const oTableDom = oTable && oTable.getDomRef();
+        //     const oColumnDom = oColumn && oColumn.getDomRef();
+        //     const oModel = oTable && oTable.getModel("listCronoTreeModel");
+        //
+        //     // Si la solapa no está visible no se puede medir; se recalcula al entrar a la solapa
+        //     if (!oTableDom || !oColumnDom || !oModel) {
+        //         return;
+        //     }
+        //
+        //     // Ancho disponible para el texto (ancho de columna menos el margen interno de la celda)
+        //     const oCeldaDom = oTableDom.querySelector('[data-sap-ui-colid="' + oColumn.getId() + '"] .sapUiTableCellInner');
+        //     const oEstilo = oCeldaDom ? getComputedStyle(oCeldaDom) : null;
+        //     const iPaddingHorizontal = oEstilo ? parseFloat(oEstilo.paddingLeft) + parseFloat(oEstilo.paddingRight) : 16;
+        //     const iAnchoTexto = (iAnchoColumna || oColumnDom.offsetWidth) - iPaddingHorizontal;
+        //
+        //     // Medidor invisible con la misma fuente que las celdas
+        //     const oMedidor = document.createElement("div");
+        //     oMedidor.className = "sapMText";
+        //     oMedidor.style.cssText = "position:absolute;visibility:hidden;white-space:normal;word-wrap:break-word;width:" + iAnchoTexto + "px";
+        //     oTableDom.appendChild(oMedidor);
+        //
+        //     oMedidor.textContent = "X";
+        //     const iAltoLinea = oMedidor.offsetHeight;
+        //
+        //     // Se miden todos los textos (grupos e hijos), no solo las filas visibles
+        //     let iLineas = 1;
+        //     const fnMedir = (aNodos) => {
+        //         aNodos.forEach((oNodo) => {
+        //             if (oNodo.Comments) {
+        //                 oMedidor.textContent = oNodo.Comments;
+        //                 iLineas = Math.max(iLineas, Math.round(oMedidor.offsetHeight / iAltoLinea));
+        //             }
+        //             if (oNodo.children) {
+        //                 fnMedir(oNodo.children);
+        //             }
+        //         });
+        //     };
+        //     fnMedir(oModel.getData() || []);
+        //     oMedidor.remove();
+        //
+        //     iLineas = Math.min(iLineas, MAX_LINEAS);
+        //
+        //     // El alto se define en el modo de filas de la tabla (alto del contenido, sin márgenes).
+        //     // Con una sola línea se vuelve al alto estándar.
+        //     oTable.getRowMode().setRowContentHeight(iLineas > 1 ? iLineas * iAltoLinea : null);
+        // },
+
+        // Tablas que ajustan el alto de filas: columna de referencia y texto tal como se ve en la celda
+        _getConfigAltoFilas: function (sTablaId) {
+            const mConfig = {
+                turnosTable: {
+                    columna: "toDoWork",
+                    texto: (o) => FormatHelper.buildParteDiarioCammesa(o.R500kv, o.Bloqueo, o.Barrafs, o.Barrafstx,
+                        o.Equiinterv, o.Descripcion, o.Solend, o.Id)
+                },
+                accionesEntregaTable: { columna: "trabajoRealizarAcciones", texto: (o) => o.trabajoRealizar },
+                cronoTreeTable: { columna: "toDoWorkCrono", texto: (o) => o.Comments },
+                accionesCronoTreeTable: { columna: "trabajoRealizarAccionesCrono", texto: (o) => o.trabajoRealizar },
+                reporteTable: { columna: "comentariosReporte", texto: (o) => o.Comentarios }
+            };
+            return mConfig[sTablaId];
+        },
+
+        // Recalcula el alto de filas cuando se cambia el ancho de la columna de referencia
+        onColumnResizeAltoFilas: function (oEvent) {
+            const sTablaId = this.getView().getLocalId(oEvent.getSource().getId());
+            const oConfig = this._getConfigAltoFilas(sTablaId);
+            if (!oConfig || oEvent.getParameter("column").getId() !== this.byId(oConfig.columna).getId()) {
                 return;
             }
-            this._ajustarAltoFilasCrono(parseInt(oEvent.getParameter("width"), 10));
+            this._ajustarAltoFilasTabla(sTablaId, parseInt(oEvent.getParameter("width"), 10));
         },
 
-        // Ajusta el alto de todas las filas según el texto más largo de "Trabajo a realizar"
-        _ajustarAltoFilasCrono: function (iAnchoColumna) {
-            const MAX_LINEAS = 6;
+        // Refrescos del modelo, filtros y render de la tabla: se recalcula con debounce
+        // para no hacerlo en cada cambio (p. ej. la sincronización 8-9-10 de turnosTable)
+        onRowsUpdatedAltoFilas: function (oEvent) {
+            this._programarAjusteAltoFilas(this.getView().getLocalId(oEvent.getSource().getId()));
+        },
 
-            const oTable = this.byId("cronoTreeTable");
-            const oColumn = this.byId("toDoWorkCrono");
+        _programarAjusteAltoFilas: function (sTablaId) {
+            this._mTimersAltoFilas = this._mTimersAltoFilas || {};
+            clearTimeout(this._mTimersAltoFilas[sTablaId]);
+            this._mTimersAltoFilas[sTablaId] = setTimeout(() => this._ajustarAltoFilasTabla(sTablaId), 250);
+        },
+
+        _ajustarAltoFilasTabla: function (sTablaId, iAnchoColumna) {
+            const oConfig = this._getConfigAltoFilas(sTablaId);
+            if (oConfig) {
+                this._ajustarAltoFilas(this.byId(sTablaId), this.byId(oConfig.columna), oConfig.texto, iAnchoColumna);
+            }
+        },
+
+        // Ajusta el alto de todas las filas según el texto más largo de la columna, sin tope de líneas.
+        // fnTexto devuelve, para cada fila (o nodo del árbol), el texto tal como se ve en la celda.
+        _ajustarAltoFilas: function (oTable, oColumna, fnTexto, iAnchoColumna) {
             const oTableDom = oTable && oTable.getDomRef();
-            const oColumnDom = oColumn && oColumn.getDomRef();
-            const oModel = oTable && oTable.getModel("listCronoTreeModel");
+            const oColumnDom = oColumna && oColumna.getDomRef();
+            const oBinding = oTable && oTable.getBinding("rows");
+            const oRowMode = oTable && oTable.getRowMode();
 
             // Si la solapa no está visible no se puede medir; se recalcula al entrar a la solapa
-            if (!oTableDom || !oColumnDom || !oModel) {
+            if (!oTableDom || !oColumnDom || !oColumnDom.offsetWidth || !oBinding || !oRowMode) {
                 return;
             }
 
             // Ancho disponible para el texto (ancho de columna menos el margen interno de la celda)
-            const oCeldaDom = oTableDom.querySelector('[data-sap-ui-colid="' + oColumn.getId() + '"] .sapUiTableCellInner');
+            const oCeldaDom = oTableDom.querySelector('[data-sap-ui-colid="' + oColumna.getId() + '"] .sapUiTableCellInner');
             const oEstilo = oCeldaDom ? getComputedStyle(oCeldaDom) : null;
             const iPaddingHorizontal = oEstilo ? parseFloat(oEstilo.paddingLeft) + parseFloat(oEstilo.paddingRight) : 16;
             const iAnchoTexto = (iAnchoColumna || oColumnDom.offsetWidth) - iPaddingHorizontal;
 
-            // Medidor invisible con la misma fuente que las celdas
+            // Se miden todos los textos (grupos e hijos), no solo las filas visibles
+            const aTextos = [];
+            const fnJuntar = (aNodos) => {
+                (Array.isArray(aNodos) ? aNodos : []).forEach((oNodo) => {
+                    const sTexto = fnTexto(oNodo);
+                    if (sTexto) {
+                        aTextos.push(sTexto);
+                    }
+                    if (oNodo.children) {
+                        fnJuntar(oNodo.children);
+                    }
+                });
+            };
+            fnJuntar(oBinding.getModel().getProperty(oBinding.getPath()));
+
+            // Si no cambiaron el ancho ni los textos no se vuelve a medir (evita parpadeo con los refrescos del modelo)
+            const sClave = iAnchoTexto + "|" + aTextos.join("\u0001");
+            this._mClaveAltoFilas = this._mClaveAltoFilas || {};
+            if (this._mClaveAltoFilas[oTable.getId()] === sClave) {
+                return;
+            }
+            this._mClaveAltoFilas[oTable.getId()] = sClave;
+
+            // Medidor invisible con la misma fuente que las celdas; pre-line respeta los saltos de línea como sap.m.Text
             const oMedidor = document.createElement("div");
             oMedidor.className = "sapMText";
-            oMedidor.style.cssText = "position:absolute;visibility:hidden;white-space:normal;word-wrap:break-word;width:" + iAnchoTexto + "px";
+            oMedidor.style.cssText = "position:absolute;visibility:hidden;white-space:pre-line;word-wrap:break-word;width:" + iAnchoTexto + "px";
             oTableDom.appendChild(oMedidor);
 
             oMedidor.textContent = "X";
             const iAltoLinea = oMedidor.offsetHeight;
 
-            // Se miden todos los textos (grupos e hijos), no solo las filas visibles
             let iLineas = 1;
-            const fnMedir = (aNodos) => {
-                aNodos.forEach((oNodo) => {
-                    if (oNodo.Comments) {
-                        oMedidor.textContent = oNodo.Comments;
-                        iLineas = Math.max(iLineas, Math.round(oMedidor.offsetHeight / iAltoLinea));
-                    }
-                    if (oNodo.children) {
-                        fnMedir(oNodo.children);
-                    }
-                });
-            };
-            fnMedir(oModel.getData() || []);
+            aTextos.forEach((sTexto) => {
+                oMedidor.textContent = sTexto;
+                iLineas = Math.max(iLineas, Math.round(oMedidor.offsetHeight / iAltoLinea));
+            });
             oMedidor.remove();
-
-            iLineas = Math.min(iLineas, MAX_LINEAS);
 
             // El alto se define en el modo de filas de la tabla (alto del contenido, sin márgenes).
             // Con una sola línea se vuelve al alto estándar.
-            oTable.getRowMode().setRowContentHeight(iLineas > 1 ? iLineas * iAltoLinea : null);
+            oRowMode.setRowContentHeight(iLineas > 1 ? iLineas * iAltoLinea : null);
         },
+        // FIN MOD TRNS #SistemaDeTurno-1
         onSelectTurno: function (oEvent) {
             this.showGlobalBusy("Buscando turnos creados…");
             const oView = this.getView();
@@ -1640,7 +2190,10 @@ sap.ui.define([
 
             const oBindingContext = oButton.getBindingContext("LicencesJsonModel");
             if (!oBindingContext) {
-                sap.m.MessageToast.show("No se pudo obtener información de la licencia");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show("No se pudo obtener información de la licencia");
+                MessageHelper.show("No se pudo obtener información de la licencia");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -1909,6 +2462,9 @@ sap.ui.define([
                                     Comentarios: oGuardada ? oGuardada.Comentarios : "",
                                     Enviado: oGuardada ? oGuardada.Enviado : false,
                                     Agrmanual: oGuardada ? oGuardada.Agrmanual : false,
+                                    // INI MOD TRNS #SistemaDeTurno-12-13
+                                    Desacoplado: oGuardada ? oGuardada.Desacoplado === true : false,
+                                    // FIN MOD TRNS #SistemaDeTurno-12-13
                                     Dateturno: oDateValue
                                 };
                             });
@@ -2053,7 +2609,10 @@ sap.ui.define([
                     press: function () {
                         var oDateValue = that._oFechaTurnoPicker.getDateValue();
                         if (!oDateValue) {
-                            sap.m.MessageToast.show("Seleccione una fecha");
+                            // INI MOD TRNS #SistemaDeTurno-6
+                            // sap.m.MessageToast.show("Seleccione una fecha");
+                            MessageHelper.show("Seleccione una fecha");
+                            // FIN MOD TRNS #SistemaDeTurno-6
                             return;
                         }
 
@@ -2125,6 +2684,11 @@ sap.ui.define([
 
                     // Reasignar turnos según el nuevo orden
                     TurnosService.assignShiftsToLicences(data);
+                    // INI MOD TRNS #SistemaDeTurno-12-13
+                    // Agrupar por equipo y colorear igual que en un turno existente
+                    this._rebuildFrontendGroupsByEquipo(data);
+                    this._assignGroupColors(data);
+                    // FIN MOD TRNS #SistemaDeTurno-12-13
 
                     // OBTENER DESCRIPCIONES DE EQUIPOS
                     const aEquiposUnicos = data
@@ -2420,6 +2984,9 @@ sap.ui.define([
                                 TurnoAsignado: turnoLicencia.Turno || "",
                                 Dateturno: turnoLicencia.Dateturno || null,
                                 Agrmanual: turnoLicencia.Agrmanual || false,
+                                // INI MOD TRNS #SistemaDeTurno-12-13
+                                Desacoplado: turnoLicencia.Desacoplado === true,
+                                // FIN MOD TRNS #SistemaDeTurno-12-13
                                 Comentarios: sComentariosCargados,
                                 _originalComentarios: sComentariosCargados,
                                 _originalTurno: turnoLicencia.Turno || "",
@@ -2449,6 +3016,9 @@ sap.ui.define([
                                     }
 
                                     result.Agrmanual = turnoLicencia.Agrmanual || false;
+                                    // INI MOD TRNS #SistemaDeTurno-12-13
+                                    result.Desacoplado = turnoLicencia.Desacoplado === true;
+                                    // FIN MOD TRNS #SistemaDeTurno-12-13
                                     const sComentariosError = turnoLicencia.Comentarios || result.Comentarios || (mComentariosPreservados && mComentariosPreservados[turnoLicencia.Id]) || "";
                                     result.Comentarios = sComentariosError;
                                     result._originalComentarios = sComentariosError;
@@ -2563,7 +3133,10 @@ sap.ui.define([
                                     item.tramitacionColorFecha === 'yellow' ? '🟡' : '⚪';
                             });
 
-                            this._rebuildFrontendGroupsByEquipoHora(arrayOrdenado);
+                            // INI MOD TRNS #SistemaDeTurno-12-13
+                            // this._rebuildFrontendGroupsByEquipoHora(arrayOrdenado);
+                            this._rebuildFrontendGroupsByEquipo(arrayOrdenado);
+                            // FIN MOD TRNS #SistemaDeTurno-12-13
                             this._assignGroupColors(arrayOrdenado);
 
                             // Ordenar por consola y luego por hora dentro de cada consola
@@ -2573,6 +3146,9 @@ sap.ui.define([
                             arrayOrdenado.forEach(function (item) {
                                 item._originalComentarios = item.Comentarios || "";
                                 item._originalTurno = item.TurnoAsignado || "";
+                                // INI MOD TRNS #SistemaDeTurno-12-13
+                                item._originalDesacoplado = item.Desacoplado === true;
+                                // FIN MOD TRNS #SistemaDeTurno-12-13
                             });
 
                             oLicencesModel.setData(arrayOrdenado);
@@ -2647,7 +3223,10 @@ sap.ui.define([
                             oTreeModel.setData(aTreeData);
                             oTreeModel.refresh();
                             this._marcarAdjuntosEnListadoCronologico();
-                            this._ajustarAltoFilasCrono();
+                            // INI MOD TRNS #SistemaDeTurno-1
+                            // this._ajustarAltoFilasCrono();
+                            this._ajustarAltoFilasTabla("cronoTreeTable");
+                            // FIN MOD TRNS #SistemaDeTurno-1
 
                             function sortByTurnoAsignado(a, b) {
                                 const toMinutes = (hora) => {
@@ -2741,6 +3320,9 @@ sap.ui.define([
             const aLicences = oModel.getProperty("/");
             const sNewTime = oEvent.getParameter("value");
             const oSelectedLicence = aLicences[iLicenseIndex];
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            const mAntes = this._snapshotGruposTurno(aLicences);
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             // ✅ NUEVO: Si el campo quedó vacío, recalcular según la regla
             if (!sNewTime || sNewTime.trim() === "") {
@@ -2748,6 +3330,9 @@ sap.ui.define([
 
                 oModel.setProperty("/", aLicences);
                 oModel.refresh(true);
+                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                this._onTurnoModificado(this._getGruposAfectados(mAntes, aLicences, [oSelectedLicence.Id]));
+                // FIN MOD TRNS #SistemaDeTurno-8-9-10
                 return;
             }
 
@@ -2764,12 +3349,18 @@ sap.ui.define([
 
                             this._updateSameGroupAndConsoleShifts(aLicences, oSelectedLicence, "");
 
-                            this._rebuildFrontendGroupsByEquipoHora(aLicences);
+                            // INI MOD TRNS #SistemaDeTurno-12-13
+                            // this._rebuildFrontendGroupsByEquipoHora(aLicences);
+                            this._rebuildFrontendGroupsByEquipo(aLicences);
+                            // FIN MOD TRNS #SistemaDeTurno-12-13
 
                             // ordenar y refrescar el modelo completo
                             this._sortLicences(aLicences);
                             oModel.setProperty("/", aLicences);
                             oModel.refresh(true);
+                            // INI MOD TRNS #SistemaDeTurno-8-9-10
+                            this._onTurnoModificado(this._getGruposAfectados(mAntes, aLicences, [oSelectedLicence.Id]));
+                            // FIN MOD TRNS #SistemaDeTurno-8-9-10
                         }.bind(this)
                     }
                 );
@@ -2781,7 +3372,10 @@ sap.ui.define([
 
             // Solo actualizar licencia individual
             this._updateSameGroupAndConsoleShifts(aLicences, oSelectedLicence, sNewTime);
-            this._rebuildFrontendGroupsByEquipoHora(aLicences);
+            // INI MOD TRNS #SistemaDeTurno-12-13
+            // this._rebuildFrontendGroupsByEquipoHora(aLicences);
+            this._rebuildFrontendGroupsByEquipo(aLicences);
+            // FIN MOD TRNS #SistemaDeTurno-12-13
             this._assignGroupColors(aLicences);
 
             this._sortLicences(aLicences);
@@ -2792,11 +3386,17 @@ sap.ui.define([
 
             var aWarningItems = this._cascadeGroupsDown(aLicences, iNewIndex, oSource);
 
-            this._rebuildFrontendGroupsByEquipoHora(aLicences);
+            // INI MOD TRNS #SistemaDeTurno-12-13
+            // this._rebuildFrontendGroupsByEquipoHora(aLicences);
+            this._rebuildFrontendGroupsByEquipo(aLicences);
+            // FIN MOD TRNS #SistemaDeTurno-12-13
             this._assignGroupColors(aLicences);
 
             oModel.setProperty("/", aLicences);
             oModel.refresh(true);
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            this._onTurnoModificado(this._getGruposAfectados(mAntes, aLicences, [oSelectedLicence.Id]));
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             // Limpiar el warning del modelo tras 4 segundos (se muestra una sola vez)
             if (aWarningItems && aWarningItems.length > 0) {
@@ -2889,7 +3489,10 @@ sap.ui.define([
                 this._recalculateFollowingGroups(groups, currentGroupIndex);
             }
 
-            this._rebuildFrontendGroupsByEquipoHora(aLicences);
+            // INI MOD TRNS #SistemaDeTurno-12-13
+            // this._rebuildFrontendGroupsByEquipoHora(aLicences);
+            this._rebuildFrontendGroupsByEquipo(aLicences);
+            // FIN MOD TRNS #SistemaDeTurno-12-13
             this._assignGroupColors(aLicences);
             this._sortLicences(aLicences);
         },
@@ -3077,7 +3680,10 @@ sap.ui.define([
                 const aSelectedIndices = oTable.getSelectedIndices();
 
                 if (!aSelectedIndices || aSelectedIndices.length === 0) {
-                    MessageToast.show("Por favor, seleccione al menos una fila para eliminar.");
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Por favor, seleccione al menos una fila para eliminar.");
+                    MessageHelper.show("Por favor, seleccione al menos una fila para eliminar.");
+                    // FIN MOD TRNS #SistemaDeTurno-6
                     return;
                 }
 
@@ -3098,7 +3704,10 @@ sap.ui.define([
             let aLicenses = oJsonModel.getProperty("/") || [];
 
             if (!Array.isArray(aLicenses) || aLicenses.length === 0) {
-                MessageToast.show("No hay datos para eliminar.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No hay datos para eliminar.");
+                MessageHelper.show("No hay datos para eliminar.");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -3129,7 +3738,10 @@ sap.ui.define([
             });
 
             if (aDataToDelete.length === 0) {
-                MessageToast.show("No se encontraron filas válidas para eliminar.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se encontraron filas válidas para eliminar.");
+                MessageHelper.show("No se encontraron filas válidas para eliminar.");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -3137,6 +3749,11 @@ sap.ui.define([
             oJsonModel.setProperty("/", aLicenses);
             oJsonModel.refresh(true);
             oTable.clearSelection();
+
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            // Recalcular Acciones y Resumen con los datos locales, sin esperar al backend
+            this._onTurnoModificado(null);
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             // 🔹 Llamar al backend para eliminar en TurnosLicenciasSet
             const oDataService = this.getView().getModel();
@@ -3165,12 +3782,17 @@ sap.ui.define([
 
             Promise.all(aDeletePromises)
                 .then(() => {
-                    Utils.onCountItems(this.getView(), aLicenses);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // Utils.onCountItems(this.getView(), aLicenses);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     const iCount = aDataToDelete.length;
                     const sMsg = iCount === 1
                         ? "Se ha eliminado 1 licencia."
                         : "Se han eliminado " + iCount + " licencias.";
-                    MessageToast.show(sMsg);
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show(sMsg);
+                    MessageHelper.show(sMsg);
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 })
                 .catch((error) => {
                     MessageBox.error("Ocurrió un error al eliminar en backend.");
@@ -3201,7 +3823,10 @@ sap.ui.define([
                 iSelectedIndex = oTable.getSelectedIndex();
 
                 if (iSelectedIndex === -1) {
-                    MessageToast.show("Por favor, seleccione una fila para desacoplar.");
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Por favor, seleccione una fila para desacoplar.");
+                    MessageHelper.show("Por favor, seleccione una fila para desacoplar.");
+                    // FIN MOD TRNS #SistemaDeTurno-6
                     return;
                 }
             }
@@ -3211,27 +3836,63 @@ sap.ui.define([
 
             // Check if the model data is available and the index is valid
             if (!oModel || !aLicences || iSelectedIndex < 0 || iSelectedIndex >= aLicences.length) {
-                MessageToast.show("Datos no válidos.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Datos no válidos.");
+                MessageHelper.show("Datos no válidos.");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
-            // Detach the selected license
-            var oDetachedLicense = aLicences.splice(iSelectedIndex, 1)[0];
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            const mAntes = this._snapshotGruposTurno(aLicences);
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
+
+            // INI MOD TRNS #SistemaDeTurno-12-13
+            // // Detach the selected license
+            // var oDetachedLicense = aLicences.splice(iSelectedIndex, 1)[0];
+            // var groupConsola = oDetachedLicense.Consola;  // Get the Consola value (group identifier)
+            //
+            // // Find the last item in the same group
+            // var groupLastIndex = -1;
+            // for (var i = aLicences.length - 1; i >= 0; i--) {
+            //     if (aLicences[i].Consola === groupConsola) {
+            //         groupLastIndex = i;
+            //         break;
+            //     }
+            // }
+            //
+            // if (groupLastIndex === -1) {
+            //     // INI MOD TRNS #SistemaDeTurno-6
+            //     // MessageToast.show("No se encontró el grupo de la licencia.");
+            //     MessageHelper.show("No se encontró el grupo de la licencia.");
+            //     // FIN MOD TRNS #SistemaDeTurno-6
+            //     return;
+            // }
+
+            // Validar la consola ANTES de sacar la fila del array, para no perderla
+            var oDetachedLicense = aLicences[iSelectedIndex];
             var groupConsola = oDetachedLicense.Consola;  // Get the Consola value (group identifier)
 
-            // Find the last item in the same group
+            // Última licencia de la misma consola, sin contar la que se desacopla
             var groupLastIndex = -1;
             for (var i = aLicences.length - 1; i >= 0; i--) {
-                if (aLicences[i].Consola === groupConsola) {
+                if (i !== iSelectedIndex && aLicences[i].Consola === groupConsola) {
                     groupLastIndex = i;
                     break;
                 }
             }
 
             if (groupLastIndex === -1) {
-                MessageToast.show("No se encontró el grupo de la licencia.");
+                MessageHelper.show("No se encontró el grupo de la licencia.");
                 return;
             }
+
+            // Detach the selected license
+            aLicences.splice(iSelectedIndex, 1);
+            if (iSelectedIndex < groupLastIndex) {
+                groupLastIndex--;
+            }
+            // FIN MOD TRNS #SistemaDeTurno-12-13
 
             // Get the last license in the group to calculate the new time 
             var oLastLicenseInGroup = aLicences[groupLastIndex];
@@ -3244,22 +3905,36 @@ sap.ui.define([
 
             // Assign a unique group for the detached license
             oDetachedLicense.Grupo = "_Desacoplado_" + oDetachedLicense.Id;
+            // INI MOD TRNS #SistemaDeTurno-12-13
+            // Persistente: el rearmado respeta el flag y se guarda en TurnosLicenciasSet
+            oDetachedLicense.Desacoplado = true;
+            // FIN MOD TRNS #SistemaDeTurno-12-13
 
             // Insert the detached license after the last element of the group
             aLicences.splice(groupLastIndex + 1, 0, oDetachedLicense);
 
-            this._rebuildFrontendGroupsByEquipoHora(aLicences);
+            // INI MOD TRNS #SistemaDeTurno-12-13
+            // this._rebuildFrontendGroupsByEquipoHora(aLicences);
+            this._rebuildFrontendGroupsByEquipo(aLicences);
+            // FIN MOD TRNS #SistemaDeTurno-12-13
             this._assignGroupColors(aLicences);
 
             // Update the model
             oModel.setProperty("/", aLicences);
             oModel.refresh(true);
 
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            this._onTurnoModificado(this._getGruposAfectados(mAntes, aLicences, [oDetachedLicense.Id]));
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
+
             // Clear selection in the table
             oTable.clearSelection();
 
             // Notify the user
-            MessageToast.show("Licencia desacoplada, asignada después del último elemento del grupo con nuevo turno y grupo individual.");
+            // INI MOD TRNS #SistemaDeTurno-6
+            // MessageToast.show("Licencia desacoplada, asignada después del último elemento del grupo con nuevo turno y grupo individual.");
+            MessageHelper.show("Licencia desacoplada, asignada después del último elemento del grupo con nuevo turno y grupo individual.");
+            // FIN MOD TRNS #SistemaDeTurno-6
         },
 
         _formatTime: function (iMinutes) {
@@ -3463,7 +4138,10 @@ sap.ui.define([
 
             this._oRowContext = oButton.getBindingContext("LicencesJsonModel");
             if (!this._oRowContext) {
-                sap.m.MessageToast.show("No se pudo obtener el contexto de la fila.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show("No se pudo obtener el contexto de la fila.");
+                MessageHelper.show("No se pudo obtener el contexto de la fila.");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -3579,7 +4257,10 @@ sap.ui.define([
             }
 
             if (!this._oRowContext) {
-                sap.m.MessageToast.show("No se pudo obtener el contexto de la fila.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show("No se pudo obtener el contexto de la fila.");
+                MessageHelper.show("No se pudo obtener el contexto de la fila.");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -3682,7 +4363,11 @@ sap.ui.define([
                     aAllLicences
                         .filter(function (oRowData) {
                             return oRowData.Comentarios !== oRowData._originalComentarios
-                                || oRowData.TurnoAsignado !== oRowData._originalTurno;
+                                // INI MOD TRNS #SistemaDeTurno-12-13
+                                // || oRowData.TurnoAsignado !== oRowData._originalTurno;
+                                || oRowData.TurnoAsignado !== oRowData._originalTurno
+                                || (oRowData.Desacoplado === true) !== (oRowData._originalDesacoplado === true);
+                                // FIN MOD TRNS #SistemaDeTurno-12-13
                         })
                         .forEach(function (oRowData) {
                             const row = {
@@ -3694,19 +4379,29 @@ sap.ui.define([
                                 Turno: oRowData.TurnoAsignado,
                                 Comentarios: oRowData.Comentarios,
                                 Enviado: false,
-                                Agrmanual: oRowData.Agrmanual || false
+                                // INI MOD TRNS #SistemaDeTurno-12-13
+                                // Agrmanual: oRowData.Agrmanual || false
+                                Agrmanual: oRowData.Agrmanual || false,
+                                Desacoplado: oRowData.Desacoplado || false
+                                // FIN MOD TRNS #SistemaDeTurno-12-13
                             };
 
                             aData.push(row);
                         });
 
                     if (aData.length === 0) {
-                        MessageToast.show("No hay cambios para guardar");
+                        // INI MOD TRNS #SistemaDeTurno-6
+                        // MessageToast.show("No hay cambios para guardar");
+                        MessageHelper.show("No hay cambios para guardar");
+                        // FIN MOD TRNS #SistemaDeTurno-6
                         this.hideGlobalBusy();
                         return;
                     }
 
-                    this.createTurno(aData, aAllLicences, false);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // this.createTurno(aData, aAllLicences, false);
+                    this._confirmarGuardadoAcciones(() => this.createTurno(aData, aAllLicences, false));
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                 })
                 .catch((error) => {
                     const aData = [];
@@ -3714,7 +4409,11 @@ sap.ui.define([
                     aAllLicences
                         .filter(function (oRowData) {
                             return oRowData.Comentarios !== oRowData._originalComentarios
-                                || oRowData.TurnoAsignado !== oRowData._originalTurno;
+                                // INI MOD TRNS #SistemaDeTurno-12-13
+                                // || oRowData.TurnoAsignado !== oRowData._originalTurno;
+                                || oRowData.TurnoAsignado !== oRowData._originalTurno
+                                || (oRowData.Desacoplado === true) !== (oRowData._originalDesacoplado === true);
+                                // FIN MOD TRNS #SistemaDeTurno-12-13
                         })
                         .forEach(function (oRowData) {
                             const row = {
@@ -3726,19 +4425,29 @@ sap.ui.define([
                                 Turno: oRowData.TurnoAsignado,
                                 Comentarios: oRowData.Comentarios,
                                 Enviado: false,
-                                Agrmanual: oRowData.Agrmanual || false
+                                // INI MOD TRNS #SistemaDeTurno-12-13
+                                // Agrmanual: oRowData.Agrmanual || false
+                                Agrmanual: oRowData.Agrmanual || false,
+                                Desacoplado: oRowData.Desacoplado || false
+                                // FIN MOD TRNS #SistemaDeTurno-12-13
                             };
 
                             aData.push(row);
                         });
 
                     if (aData.length === 0) {
-                        MessageToast.show("No hay cambios para guardar");
+                        // INI MOD TRNS #SistemaDeTurno-6
+                        // MessageToast.show("No hay cambios para guardar");
+                        MessageHelper.show("No hay cambios para guardar");
+                        // FIN MOD TRNS #SistemaDeTurno-6
                         this.hideGlobalBusy();
                         return;
                     }
 
-                    this.createTurno(aData, aAllLicences, false);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // this.createTurno(aData, aAllLicences, false);
+                    this._confirmarGuardadoAcciones(() => this.createTurno(aData, aAllLicences, false));
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                 });
         },
 
@@ -3795,7 +4504,11 @@ sap.ui.define([
                         "Turno": licencia.Turno,
                         "Comentarios": licencia.Comentarios,
                         "Enviado": bEnviado !== undefined ? bEnviado : licencia.Enviado,
-                        "Agrmanual": licencia.Agrmanual || false
+                        // INI MOD TRNS #SistemaDeTurno-12-13
+                        // "Agrmanual": licencia.Agrmanual || false
+                        "Agrmanual": licencia.Agrmanual || false,
+                        "Desacoplado": licencia.Desacoplado || false
+                        // FIN MOD TRNS #SistemaDeTurno-12-13
                     };
 
                     // Si bEnviado es true, primero intentar actualizar el turno existente
@@ -3864,7 +4577,10 @@ sap.ui.define([
                     const sMensajeExito = bEnviado
                         ? "Turno enviado exitosamente"
                         : "Cambios guardados correctamente";
-                    MessageToast.show(sMensajeExito);
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show(sMensajeExito);
+                    MessageHelper.show(sMensajeExito);
+                    // FIN MOD TRNS #SistemaDeTurno-6
                     this._suppressLicenseAlert = true;
 
                     if (licencias && licencias.length > 0) {
@@ -3878,6 +4594,10 @@ sap.ui.define([
                 })
                 .catch((error) => {
                     this.hideGlobalBusy();
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // Si falla el turno no se encadena el guardado de acciones
+                    this._guardarAccionesTrasTurno = false;
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     MessageBox.error("Error al guardar los turnos");
                 });
         },
@@ -3890,6 +4610,9 @@ sap.ui.define([
 
             if (!oFechaTurno) {
                 this.hideGlobalBusy();
+                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                this._encadenarGuardadoAcciones();
+                // FIN MOD TRNS #SistemaDeTurno-8-9-10
                 return;
             }
 
@@ -3920,7 +4643,13 @@ sap.ui.define([
 
                     if (aResults.length === 0) {
                         this.hideGlobalBusy();
-                        MessageToast.show("Turno guardado correctamente");
+                        // INI MOD TRNS #SistemaDeTurno-6
+                        // MessageToast.show("Turno guardado correctamente");
+                        MessageHelper.show("Turno guardado correctamente");
+                        // FIN MOD TRNS #SistemaDeTurno-6
+                        // INI MOD TRNS #SistemaDeTurno-8-9-10
+                        this._encadenarGuardadoAcciones();
+                        // FIN MOD TRNS #SistemaDeTurno-8-9-10
                         return;
                     }
 
@@ -3928,16 +4657,31 @@ sap.ui.define([
                         .then(() => {
                             setTimeout(() => {
                                 this.hideGlobalBusy();
-                                MessageToast.show("Turno guardado y actualizado correctamente");
+                                // INI MOD TRNS #SistemaDeTurno-6
+                                // MessageToast.show("Turno guardado y actualizado correctamente");
+                                MessageHelper.show("Turno guardado y actualizado correctamente");
+                                // FIN MOD TRNS #SistemaDeTurno-6
+                                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                                this._encadenarGuardadoAcciones();
+                                // FIN MOD TRNS #SistemaDeTurno-8-9-10
                             }, 500);
                         })
                         .catch((err) => {
                             this.hideGlobalBusy();
+                            // INI MOD TRNS #SistemaDeTurno-8-9-10
+                            this._encadenarGuardadoAcciones();
+                            // FIN MOD TRNS #SistemaDeTurno-8-9-10
                         });
                 },
                 error: (oError) => {
                     this.hideGlobalBusy();
-                    MessageToast.show("Turno guardado (no se pudo recargar automáticamente)");
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Turno guardado (no se pudo recargar automáticamente)");
+                    MessageHelper.show("Turno guardado (no se pudo recargar automáticamente)");
+                    // FIN MOD TRNS #SistemaDeTurno-6
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    this._encadenarGuardadoAcciones();
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                 }
             });
         },
@@ -4050,7 +4794,10 @@ sap.ui.define([
                 Rdisparo: false
             });
 
-            MessageToast.show("Filtros limpiados");
+            // INI MOD TRNS #SistemaDeTurno-6
+            // MessageToast.show("Filtros limpiados");
+            MessageHelper.show("Filtros limpiados");
+            // FIN MOD TRNS #SistemaDeTurno-6
         },
 
         makeFilters: function () {
@@ -4094,7 +4841,10 @@ sap.ui.define([
                     if (oData.results.length === 0) {
                         this.successSelectTurno({ results: [] });
                         this.hideGlobalBusy();
-                        MessageToast.show("No hay turnos para esta fecha");
+                        // INI MOD TRNS #SistemaDeTurno-6
+                        // MessageToast.show("No hay turnos para esta fecha");
+                        MessageHelper.show("No hay turnos para esta fecha");
+                        // FIN MOD TRNS #SistemaDeTurno-6
                         return;
                     }
 
@@ -4130,7 +4880,10 @@ sap.ui.define([
                                 const message = aFiltered.length === aTurnosWithLicencias.length
                                     ? `Mostrando turnos`
                                     : `Filtros aplicados`;
-                                MessageToast.show(message);
+                                // INI MOD TRNS #SistemaDeTurno-6
+                                // MessageToast.show(message);
+                                MessageHelper.show(message);
+                                // FIN MOD TRNS #SistemaDeTurno-6
                             })
                             .catch((err) => {
                             })
@@ -4721,9 +5474,15 @@ sap.ui.define([
 
             // Mensajes
             if (upperWarning && warnings.length > 0) {
-                MessageToast.show("El turno comienza antes de la separación mínima con el grupo anterior.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("El turno comienza antes de la separación mínima con el grupo anterior.");
+                MessageHelper.show("El turno comienza antes de la separación mínima con el grupo anterior.");
+                // FIN MOD TRNS #SistemaDeTurno-6
             } else if (upperWarning) {
-                MessageToast.show("El turno comienza antes de la separación mínima con el grupo anterior.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("El turno comienza antes de la separación mínima con el grupo anterior.");
+                MessageHelper.show("El turno comienza antes de la separación mínima con el grupo anterior.");
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
 
             // VALUE STATE
@@ -4755,7 +5514,10 @@ sap.ui.define([
 
             if (!this._currentAttachmentContext) {
                 console.error("❌ No se pudo obtener el contexto");
-                MessageToast.show("No se pudo obtener la licencia");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener la licencia");
+                MessageHelper.show("No se pudo obtener la licencia");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -4871,7 +5633,10 @@ sap.ui.define([
                     console.log("✅ Modelo refrescado");
 
                     this._saveAttachments([oLicencia]);
-                    MessageToast.show("Archivo agregado: " + file.name);
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Archivo agregado: " + file.name);
+                    MessageHelper.show("Archivo agregado: " + file.name);
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 } else {
                     console.error("❌ No hay contexto de licencia");
                 }
@@ -4895,7 +5660,10 @@ sap.ui.define([
 
             if (!oContext) {
                 console.error("❌ No se pudo obtener el contexto");
-                MessageToast.show("No se pudo obtener la licencia");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener la licencia");
+                MessageHelper.show("No se pudo obtener la licencia");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -4908,7 +5676,10 @@ sap.ui.define([
 
             if (!aAttachments || aAttachments.length === 0) {
                 console.log("⚠️ No hay adjuntos, mostrando mensaje");
-                MessageToast.show("No hay archivos adjuntos");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No hay archivos adjuntos");
+                MessageHelper.show("No hay archivos adjuntos");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -5164,7 +5935,10 @@ sap.ui.define([
 
         onAcceptPDFViewer: function () {
             const oResourceBundle = this.getView().getModel("i18n").getResourceBundle();
-            MessageToast.show(oResourceBundle.getText("pdfViewedSuccess"));
+            // INI MOD TRNS #SistemaDeTurno-6
+            // MessageToast.show(oResourceBundle.getText("pdfViewedSuccess"));
+            MessageHelper.show(oResourceBundle.getText("pdfViewedSuccess"));
+            // FIN MOD TRNS #SistemaDeTurno-6
             this._pdfViewerDialog.close();
         },
 
@@ -5184,7 +5958,10 @@ sap.ui.define([
                 link.click();
                 document.body.removeChild(link);
 
-                MessageToast.show(oResourceBundle.getText("downloadingFile", [this._currentPDFData.name]));
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show(oResourceBundle.getText("downloadingFile", [this._currentPDFData.name]));
+                MessageHelper.show(oResourceBundle.getText("downloadingFile", [this._currentPDFData.name]));
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
         },
 
@@ -5237,7 +6014,10 @@ sap.ui.define([
             link.click();
 
             console.log("✅ Descarga iniciada");
-            MessageToast.show("Descargando: " + oAttachment.AttachmentName);
+            // INI MOD TRNS #SistemaDeTurno-6
+            // MessageToast.show("Descargando: " + oAttachment.AttachmentName);
+            MessageHelper.show("Descargando: " + oAttachment.AttachmentName);
+            // FIN MOD TRNS #SistemaDeTurno-6
         },
 
         /**
@@ -5267,7 +6047,10 @@ sap.ui.define([
 
             if (!oLicencia) {
                 console.error("❌ No se encontró oLicencia");
-                MessageToast.show("Error: No se pudo encontrar la licencia");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Error: No se pudo encontrar la licencia");
+                MessageHelper.show("Error: No se pudo encontrar la licencia");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -5279,7 +6062,10 @@ sap.ui.define([
 
             if (!aAttachments || aAttachments.length === 0) {
                 console.error("❌ No hay adjuntos para eliminar");
-                MessageToast.show("Error: No hay adjuntos para eliminar");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Error: No hay adjuntos para eliminar");
+                MessageHelper.show("Error: No hay adjuntos para eliminar");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -5326,7 +6112,10 @@ sap.ui.define([
                 this._deleteAttachmentFromBackend(oAttachment);
             } else {
                 console.log("ℹ️ Adjunto local, no está en backend");
-                MessageToast.show("Archivo eliminado: " + oAttachment.AttachmentName);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Archivo eliminado: " + oAttachment.AttachmentName);
+                MessageHelper.show("Archivo eliminado: " + oAttachment.AttachmentName);
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
 
             // Cerrar el diálogo
@@ -5337,7 +6126,10 @@ sap.ui.define([
 
             // Mensaje si se eliminaron todos
             if (oLicencia.Attachments.length === 0) {
-                MessageToast.show("Todos los archivos fueron eliminados");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Todos los archivos fueron eliminados");
+                MessageHelper.show("Todos los archivos fueron eliminados");
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
 
             console.log("=== _deleteAttachment FIN ===\n");
@@ -5346,7 +6138,10 @@ sap.ui.define([
 
         openExcelViewer: function (oAttachment) {
             this._downloadFile(oAttachment);
-            MessageToast.show("Descargando: " + oAttachment.AttachmentName);
+            // INI MOD TRNS #SistemaDeTurno-6
+            // MessageToast.show("Descargando: " + oAttachment.AttachmentName);
+            MessageHelper.show("Descargando: " + oAttachment.AttachmentName);
+            // FIN MOD TRNS #SistemaDeTurno-6
         },
 
 
@@ -5426,7 +6221,10 @@ sap.ui.define([
 
             return Promise.all(aPromises)
                 .then(() => {
-                    MessageToast.show("Adjuntos guardados exitosamente");
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Adjuntos guardados exitosamente");
+                    MessageHelper.show("Adjuntos guardados exitosamente");
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 })
                 .catch((error) => {
                     MessageBox.warning("Algunos adjuntos no se pudieron guardar");
@@ -5459,7 +6257,10 @@ sap.ui.define([
                         oTable.getBinding("rows").refresh();
                     }
 
-                    MessageToast.show("Archivo eliminado correctamente");
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Archivo eliminado correctamente");
+                    MessageHelper.show("Archivo eliminado correctamente");
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 }.bind(this),
                 error: function (oError) {
                     this.hideGlobalBusy();
@@ -5735,7 +6536,10 @@ sap.ui.define([
             }
 
             if (!oFechaInicio || !oFechaFin) {
-                MessageToast.show("No se pudieron obtener los DatePickers.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudieron obtener los DatePickers.");
+                MessageHelper.show("No se pudieron obtener los DatePickers.");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -5838,7 +6642,10 @@ sap.ui.define([
                     return this.processReportData(oDataAcumulado, oDateInicio, oDateFin, sReportType);
                 })
                 .catch((err) => {
-                    MessageToast.show("Error al procesar los datos del reporte.");
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Error al procesar los datos del reporte.");
+                    MessageHelper.show("Error al procesar los datos del reporte.");
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 })
                 .finally(() => {
                     this.hideGlobalBusy();
@@ -5903,7 +6710,10 @@ sap.ui.define([
                     }
                 })
                 .catch((error) => {
-                    MessageToast.show("Error al procesar las licencias.");
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Error al procesar las licencias.");
+                    MessageHelper.show("Error al procesar las licencias.");
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 });
         },
 
@@ -5945,7 +6755,10 @@ sap.ui.define([
                     cellStyles: true
                 });
 
-                MessageToast.show("Reporte Excel generado correctamente.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Reporte Excel generado correctamente.");
+                MessageHelper.show("Reporte Excel generado correctamente.");
+                // FIN MOD TRNS #SistemaDeTurno-6
 
                 // Cerrar el diálogo y limpiar las fechas
                 this.onCancelReports();
@@ -6095,7 +6908,10 @@ sap.ui.define([
                     cellStyles: true
                 });
 
-                MessageToast.show("Reporte Excel de maniobras generado correctamente.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Reporte Excel de maniobras generado correctamente.");
+                MessageHelper.show("Reporte Excel de maniobras generado correctamente.");
+                // FIN MOD TRNS #SistemaDeTurno-6
 
                 // Cerrar el diálogo y limpiar las fechas
                 this.onCancelReports();
@@ -6137,10 +6953,15 @@ sap.ui.define([
                     "Equipo": license.Equnr || "",
                     "IdLicencia": license.Id || "",
                     "Estado": oFormatter.getEstado(license.Equstat) || "",
-                    "CondTrabajo": oFormatter.getJobCond(license.Jobcond) || "",
+                    // INI MOD TRNS #SistemaDeTurno-4
+                    // "CondTrabajo": oFormatter.getJobCond(license.Jobcond) || "",
+                    // FIN MOD TRNS #SistemaDeTurno-4
                     "HoraInicio": license.Horainicio ? oFormatter.durationToTime(license.Horainicio) : (license.Gdate ? oFormatter.msTohoursSeconds(license.Gdate) : ""),
                     "TrabajoRealizar": license.Comments || "",
-                    "Region": oFormatter.getRegiones(license.Werks) || "",
+                    // INI MOD TRNS #SistemaDeTurno-4
+                    // "Region": oFormatter.getRegiones(license.Werks) || "",
+                    "CondTrabajo": oFormatter.getJobCond(license.Jobcond) || "",
+                    // FIN MOD TRNS #SistemaDeTurno-4
                     "Consola": license.Consola || "",
                     "Turno": license.TurnoAsignado || "",
                     "Comentario": license.Comentarios || "",
@@ -6338,51 +7159,96 @@ sap.ui.define([
                 return;
             }
 
-            // ── Werks: texto → código(s) de región (dinámico desde RegionesJsonModel) ─
-            if (sFilterProp === "Werks") {
-                oEvent.preventDefault();
-
-                var sRawW = (oEvent.getParameter("value") || "").trim();
-
-                if (!sRawW) {
-                    oBinding.filter([], sap.ui.model.FilterType.Control);
-                    return;
-                }
-
-                var fnNormW = function (s) {
-                    return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                };
-                var sNormW = fnNormW(sRawW);
-
-                var oRegionesModel = this.getView().getModel("RegionesJsonModel");
-                var aRegiones = (oRegionesModel && oRegionesModel.getProperty("/Regiones")) || [];
-
-                var oFormatterW = this.formatter;
-                var aCodeFiltersW = aRegiones
-                    .filter(function (r) {
-                        var sFormattedName = fnNormW((oFormatterW && oFormatterW.getRegiones(r.Werks)) || "");
-                        return fnNormW(r.Name1 || "").indexOf(sNormW) !== -1 ||
-                            sFormattedName.indexOf(sNormW) !== -1;
-                    })
-                    .map(function (r) {
-                        return new Filter("Werks", FilterOperator.EQ, r.Werks);
-                    });
-
-                var oWerksFilter;
-                if (aCodeFiltersW.length === 0) {
-                    oWerksFilter = new Filter("Werks", FilterOperator.EQ, "__NO_MATCH__");
-                } else if (aCodeFiltersW.length === 1) {
-                    oWerksFilter = aCodeFiltersW[0];
-                } else {
-                    oWerksFilter = new Filter({ filters: aCodeFiltersW, and: false });
-                }
-
-                oBinding.filter([oWerksFilter], sap.ui.model.FilterType.Control);
-                return;
-            }
+            // INI MOD TRNS #SistemaDeTurno-7
+            // Rama sin uso: la columna Región (Werks) está comentada en la vista
+            // // ── Werks: texto → código(s) de región (dinámico desde RegionesJsonModel) ─
+            // if (sFilterProp === "Werks") {
+            //     oEvent.preventDefault();
+            //
+            //     var sRawW = (oEvent.getParameter("value") || "").trim();
+            //
+            //     if (!sRawW) {
+            //         oBinding.filter([], sap.ui.model.FilterType.Control);
+            //         return;
+            //     }
+            //
+            //     var fnNormW = function (s) {
+            //         return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            //     };
+            //     var sNormW = fnNormW(sRawW);
+            //
+            //     var oRegionesModel = this.getView().getModel("RegionesJsonModel");
+            //     var aRegiones = (oRegionesModel && oRegionesModel.getProperty("/Regiones")) || [];
+            //
+            //     var oFormatterW = this.formatter;
+            //     var aCodeFiltersW = aRegiones
+            //         .filter(function (r) {
+            //             var sFormattedName = fnNormW((oFormatterW && oFormatterW.getRegiones(r.Werks)) || "");
+            //             return fnNormW(r.Name1 || "").indexOf(sNormW) !== -1 ||
+            //                 sFormattedName.indexOf(sNormW) !== -1;
+            //         })
+            //         .map(function (r) {
+            //             return new Filter("Werks", FilterOperator.EQ, r.Werks);
+            //         });
+            //
+            //     var oWerksFilter;
+            //     if (aCodeFiltersW.length === 0) {
+            //         oWerksFilter = new Filter("Werks", FilterOperator.EQ, "__NO_MATCH__");
+            //     } else if (aCodeFiltersW.length === 1) {
+            //         oWerksFilter = aCodeFiltersW[0];
+            //     } else {
+            //         oWerksFilter = new Filter({ filters: aCodeFiltersW, and: false });
+            //     }
+            //
+            //     oBinding.filter([oWerksFilter], sap.ui.model.FilterType.Control);
+            //     return;
+            // }
+            // FIN MOD TRNS #SistemaDeTurno-7
 
             // Resto de columnas: la tabla las maneja normalmente
         },
+
+        // INI MOD TRNS #SistemaDeTurno-7
+        // Filtro de columna de Acciones, Listados Cronológicos y Resumen: compara contra el texto
+        // de la celda sin distinguir mayúsculas, acentos ni espacios, y combina todas las columnas filtradas
+        onColumnFilterTexto: function (oEvent) {
+            oEvent.preventDefault();
+
+            const oColumn = oEvent.getParameter("column");
+            const sValue = (oEvent.getParameter("value") || "").trim();
+
+            oColumn.setFilterValue(sValue);
+            oColumn.setFiltered(!!sValue);
+
+            this._aplicarFiltrosColumna(oEvent.getSource());
+        },
+
+        _aplicarFiltrosColumna: function (oTable) {
+            const oBinding = oTable && oTable.getBinding("rows");
+            if (!oBinding) {
+                return;
+            }
+
+            const aFilters = oTable.getColumns()
+                .filter(oCol => oCol.getFilterProperty() && oCol.getFiltered())
+                .map(oCol => {
+                    const sBuscado = this._normalizarTextoFiltro(oCol.getFilterValue());
+                    return new Filter({
+                        path: oCol.getFilterProperty(),
+                        test: vValor => this._normalizarTextoFiltro(vValor).indexOf(sBuscado) !== -1
+                    });
+                });
+
+            oBinding.filter(aFilters, sap.ui.model.FilterType.Control);
+        },
+
+        _normalizarTextoFiltro: function (vValor) {
+            return String(vValor == null ? "" : vValor)
+                .toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/\s+/g, "");
+        },
+        // FIN MOD TRNS #SistemaDeTurno-7
 
         onFilter: function () {
             const oView = this.getView();
@@ -6390,7 +7256,10 @@ sap.ui.define([
             const oBinding = oTable.getBinding("rows");
 
             if (!oBinding) {
-                sap.m.MessageToast.show("No hay datos para filtrar");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show("No hay datos para filtrar");
+                MessageHelper.show("No hay datos para filtrar");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -6473,31 +7342,47 @@ sap.ui.define([
                 }
             }
 
-            // 7. Búsqueda rápida (si existe)
-            const oFastSearchInput = this.byId("fastSearchInput");
-            if (oFastSearchInput) {
-                const sFastSearch = oFastSearchInput.getValue();
-                if (sFastSearch) {
-                    const aFastSearchFilters = [
-                        new sap.ui.model.Filter("Id", sap.ui.model.FilterOperator.Contains, sFastSearch),
-                        new sap.ui.model.Filter("Equnr", sap.ui.model.FilterOperator.Contains, sFastSearch),
-                    ];
-                    aFilters.push(new sap.ui.model.Filter({
-                        filters: aFastSearchFilters,
-                        and: false // OR
-                    }));
-                }
-            }
+            // INI MOD TRNS #SistemaDeTurno-7
+            // Se elimina la búsqueda rápida: el control fastSearchInput ya no existe en la vista
+            // // 7. Búsqueda rápida (si existe)
+            // const oFastSearchInput = this.byId("fastSearchInput");
+            // if (oFastSearchInput) {
+            //     const sFastSearch = oFastSearchInput.getValue();
+            //     if (sFastSearch) {
+            //         const aFastSearchFilters = [
+            //             new sap.ui.model.Filter("Id", sap.ui.model.FilterOperator.Contains, sFastSearch),
+            //             new sap.ui.model.Filter("Equnr", sap.ui.model.FilterOperator.Contains, sFastSearch),
+            //         ];
+            //         aFilters.push(new sap.ui.model.Filter({
+            //             filters: aFastSearchFilters,
+            //             and: false // OR
+            //         }));
+            //     }
+            // }
+            // FIN MOD TRNS #SistemaDeTurno-7
 
             console.groupEnd();
 
             // Aplicar filtros
             if (aFilters.length > 0) {
-                oBinding.filter(aFilters);
-                sap.m.MessageToast.show(`Filtros aplicados`);
+                // INI MOD TRNS #SistemaDeTurno-7
+                // Filtros del panel como Application para que convivan con los filtros de columna (Control)
+                // oBinding.filter(aFilters);
+                oBinding.filter(aFilters, sap.ui.model.FilterType.Application);
+                // FIN MOD TRNS #SistemaDeTurno-7
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show(`Filtros aplicados`);
+                MessageHelper.show(`Filtros aplicados`);
+                // FIN MOD TRNS #SistemaDeTurno-6
             } else {
-                oBinding.filter([]);
-                sap.m.MessageToast.show("No hay filtros seleccionados");
+                // INI MOD TRNS #SistemaDeTurno-7
+                // oBinding.filter([]);
+                oBinding.filter([], sap.ui.model.FilterType.Application);
+                // FIN MOD TRNS #SistemaDeTurno-7
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show("No hay filtros seleccionados");
+                MessageHelper.show("No hay filtros seleccionados");
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
 
             const oTreeTable = this.byId("cronoTreeTable");
@@ -6509,14 +7394,28 @@ sap.ui.define([
                     const oFilteredModel = new JSONModel(aFilteredData);
                     oTreeTable.setModel(oFilteredModel, "listCronoTreeModel");
                     this._marcarAdjuntosEnListadoCronologico();
-                    this._ajustarAltoFilasCrono();
+                    // INI MOD TRNS #SistemaDeTurno-7
+                    // El binding se recrea con el nuevo modelo: se vuelven a aplicar los filtros de columna
+                    this._aplicarFiltrosColumna(oTreeTable);
+                    // FIN MOD TRNS #SistemaDeTurno-7
+                    // INI MOD TRNS #SistemaDeTurno-1
+                    // this._ajustarAltoFilasCrono();
+                    this._ajustarAltoFilasTabla("cronoTreeTable");
+                    // FIN MOD TRNS #SistemaDeTurno-1
 
                     console.log("✅ Listado Cronológico creado con adjuntos marcados");
                 } else {
                     const oTreeModel = this.getView().getModel("listCronoTreeModel");
                     oTreeTable.setModel(oTreeModel, "listCronoTreeModel");
                     this._marcarAdjuntosEnListadoCronologico();
-                    this._ajustarAltoFilasCrono();
+                    // INI MOD TRNS #SistemaDeTurno-7
+                    // El binding se recrea con el nuevo modelo: se vuelven a aplicar los filtros de columna
+                    this._aplicarFiltrosColumna(oTreeTable);
+                    // FIN MOD TRNS #SistemaDeTurno-7
+                    // INI MOD TRNS #SistemaDeTurno-1
+                    // this._ajustarAltoFilasCrono();
+                    this._ajustarAltoFilasTabla("cronoTreeTable");
+                    // FIN MOD TRNS #SistemaDeTurno-1
 
                     console.log("✅ Listado Cronológico creado con adjuntos marcados");
                 }
@@ -6597,7 +7496,10 @@ sap.ui.define([
                     this.getView().setBusy(false);
 
                     if (oData.results.length === 0) {
-                        sap.m.MessageToast.show("No se encontraron equipos para las estaciones seleccionadas");
+                        // INI MOD TRNS #SistemaDeTurno-6
+                        // sap.m.MessageToast.show("No se encontraron equipos para las estaciones seleccionadas");
+                        MessageHelper.show("No se encontraron equipos para las estaciones seleccionadas");
+                        // FIN MOD TRNS #SistemaDeTurno-6
                     }
                 },
                 error: (oError) => {
@@ -6652,20 +7554,48 @@ sap.ui.define([
                 oEDisparoCombo.setSelectedKey("");
             }
 
-            // 7. Limpiar búsqueda rápida
-            const oFastSearchInput = this.byId("fastSearchInput");
-            if (oFastSearchInput) {
-                oFastSearchInput.setValue("");
-            }
+            // INI MOD TRNS #SistemaDeTurno-7
+            // Se elimina la búsqueda rápida: el control fastSearchInput ya no existe en la vista
+            // // 7. Limpiar búsqueda rápida
+            // const oFastSearchInput = this.byId("fastSearchInput");
+            // if (oFastSearchInput) {
+            //     oFastSearchInput.setValue("");
+            // }
+            // FIN MOD TRNS #SistemaDeTurno-7
 
             // 8. Limpiar filtros de la tabla
             const oTable = this.byId("turnosTable");
             const oBinding = oTable.getBinding("rows");
             if (oBinding) {
                 oBinding.filter([]);
+                // INI MOD TRNS #SistemaDeTurno-7
+                // Los filtros del panel ahora son Application: también hay que limpiarlos
+                oBinding.filter([], sap.ui.model.FilterType.Application);
+                // FIN MOD TRNS #SistemaDeTurno-7
             }
 
-            sap.m.MessageToast.show("Filtros limpiados");
+            // INI MOD TRNS #SistemaDeTurno-6
+            // sap.m.MessageToast.show("Filtros limpiados");
+            MessageHelper.show("Filtros limpiados");
+            // FIN MOD TRNS #SistemaDeTurno-6
+
+            // INI MOD TRNS #SistemaDeTurno-7
+            // Se limpian también los filtros de columna del resto de las solapas
+            // (en cronoTreeTable, antes del setModel / reaplicado de abajo)
+            ["accionesEntregaTable", "cronoTreeTable", "accionesCronoTreeTable", "reporteTable"].forEach(sTablaId => {
+                const oTabla = this.byId(sTablaId);
+                if (!oTabla) {
+                    return;
+                }
+                oTabla.getColumns()
+                    .filter(oCol => oCol.getFilterProperty())
+                    .forEach(oCol => {
+                        oCol.setFilterValue("");
+                        oCol.setFiltered(false);
+                    });
+                this._aplicarFiltrosColumna(oTabla);
+            });
+            // FIN MOD TRNS #SistemaDeTurno-7
 
             const oTreeTable = this.byId("cronoTreeTable");
             if (oTreeTable) {
@@ -6673,7 +7603,14 @@ sap.ui.define([
                 if (oTreeModel) {
                     oTreeTable.setModel(oTreeModel, "listCronoTreeModel");
                     this._marcarAdjuntosEnListadoCronologico();
-                    this._ajustarAltoFilasCrono();
+                    // INI MOD TRNS #SistemaDeTurno-7
+                    // El binding se recrea con el nuevo modelo: se vuelven a aplicar los filtros de columna
+                    this._aplicarFiltrosColumna(oTreeTable);
+                    // FIN MOD TRNS #SistemaDeTurno-7
+                    // INI MOD TRNS #SistemaDeTurno-1
+                    // this._ajustarAltoFilasCrono();
+                    this._ajustarAltoFilasTabla("cronoTreeTable");
+                    // FIN MOD TRNS #SistemaDeTurno-1
                 }
             }
         },
@@ -6711,7 +7648,10 @@ sap.ui.define([
             const oTreeTable = this.byId("cronoTreeTable");
             if (oTreeTable) {
                 oTreeTable.expandToLevel(1);
-                MessageToast.show("Todos los grupos expandidos");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Todos los grupos expandidos");
+                MessageHelper.show("Todos los grupos expandidos");
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
         },
 
@@ -6721,7 +7661,10 @@ sap.ui.define([
             const oTreeTable = this.byId("cronoTreeTable");
             if (oTreeTable) {
                 oTreeTable.collapseAll();
-                MessageToast.show("Todos los grupos colapsados");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Todos los grupos colapsados");
+                MessageHelper.show("Todos los grupos colapsados");
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
         },
 
@@ -6733,7 +7676,10 @@ sap.ui.define([
             const oDateValue = oDatePicker.getDateValue();
 
             if (!oDateValue) {
-                sap.m.MessageToast.show("Seleccione una fecha primero");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show("Seleccione una fecha primero");
+                MessageHelper.show("Seleccione una fecha primero");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -6756,7 +7702,10 @@ sap.ui.define([
                     this.successSelectTurno(oData)
                         .then(() => {
                             this.hideGlobalBusy();
-                            sap.m.MessageToast.show("Datos actualizados correctamente");
+                            // INI MOD TRNS #SistemaDeTurno-6
+                            // sap.m.MessageToast.show("Datos actualizados correctamente");
+                            MessageHelper.show("Datos actualizados correctamente");
+                            // FIN MOD TRNS #SistemaDeTurno-6
                         })
                         .catch((error) => {
                             this.hideGlobalBusy();
@@ -6927,47 +7876,79 @@ sap.ui.define([
         },
 
         // ---------------------- REORDENAMIENTO GRUPOS ----------------
+        // INI MOD TRNS #SistemaDeTurno-12-13
+        // /**
+        //  * Recalcula el campo Grupo SOLO para el frontend:
+        //  * - Si Equnr + TurnoAsignado es igual => mismo Grupo
+        //  * - Si no coincide con nadie => grupo solo
+        //  * - Si es desacoplado => mantiene "desacoplado_idLicencia(<Id>)"
+        //  */
+        // _rebuildFrontendGroupsByEquipoHora: function (aLicences) {
+        //     if (!Array.isArray(aLicences)) return;
+        //
+        //     const mCount = Object.create(null);
+        //
+        //     const buildKey = (lic) => {
+        //         const equipo = (lic.Equnr || "").trim();
+        //         const hora = (lic.TurnoAsignado || "").trim();
+        //         return equipo + "|" + hora;
+        //     };
+        //
+        //     aLicences.forEach((lic) => {
+        //         const sGrupo = String(lic.Grupo || "");
+        //         const bIsDetached = sGrupo.startsWith("desacoplado_idLicencia(");
+        //         if (bIsDetached) return;
+        //
+        //         const key = buildKey(lic);
+        //         mCount[key] = (mCount[key] || 0) + 1;
+        //     });
+        //
+        //     aLicences.forEach((lic) => {
+        //         const sGrupo = String(lic.Grupo || "");
+        //         const bIsDetached = sGrupo.startsWith("desacoplado_idLicencia(");
+        //         if (bIsDetached) return;
+        //
+        //         const key = buildKey(lic);
+        //         if (mCount[key] > 1) {
+        //             const equipo = (lic.Equnr || "").trim();
+        //             const hora = (lic.TurnoAsignado || "").trim().replaceAll(":", "");
+        //             lic.Grupo = `grp_${equipo}_${hora}`;
+        //         } else {
+        //             lic.Grupo = `solo_${lic.Id}`;
+        //         }
+        //     });
+        // },
+
         /**
          * Recalcula el campo Grupo SOLO para el frontend:
-         * - Si Equnr + TurnoAsignado es igual => mismo Grupo
-         * - Si no coincide con nadie => grupo solo
-         * - Si es desacoplado => mantiene "desacoplado_idLicencia(<Id>)"
+         * - Desacoplado === true => grupo propio "_Desacoplado_<Id>"
+         * - Mismo Equnr (más de una licencia) => "grp_<Equnr>", sin tener en cuenta la hora
+         * - Equnr único o vacío => "solo_<Id>"
          */
-        _rebuildFrontendGroupsByEquipoHora: function (aLicences) {
+        _rebuildFrontendGroupsByEquipo: function (aLicences) {
             if (!Array.isArray(aLicences)) return;
 
             const mCount = Object.create(null);
-
-            const buildKey = (lic) => {
-                const equipo = (lic.Equnr || "").trim();
-                const hora = (lic.TurnoAsignado || "").trim();
-                return equipo + "|" + hora;
-            };
+            const fnEquipo = (lic) => (lic.Equnr || "").trim();
 
             aLicences.forEach((lic) => {
-                const sGrupo = String(lic.Grupo || "");
-                const bIsDetached = sGrupo.startsWith("desacoplado_idLicencia(");
-                if (bIsDetached) return;
-
-                const key = buildKey(lic);
-                mCount[key] = (mCount[key] || 0) + 1;
+                const sEquipo = fnEquipo(lic);
+                if (lic.Desacoplado === true || !sEquipo) return;
+                mCount[sEquipo] = (mCount[sEquipo] || 0) + 1;
             });
 
             aLicences.forEach((lic) => {
-                const sGrupo = String(lic.Grupo || "");
-                const bIsDetached = sGrupo.startsWith("desacoplado_idLicencia(");
-                if (bIsDetached) return;
-
-                const key = buildKey(lic);
-                if (mCount[key] > 1) {
-                    const equipo = (lic.Equnr || "").trim();
-                    const hora = (lic.TurnoAsignado || "").trim().replaceAll(":", "");
-                    lic.Grupo = `grp_${equipo}_${hora}`;
+                const sEquipo = fnEquipo(lic);
+                if (lic.Desacoplado === true) {
+                    lic.Grupo = "_Desacoplado_" + lic.Id;
+                } else if (sEquipo && mCount[sEquipo] > 1) {
+                    lic.Grupo = `grp_${sEquipo}`;
                 } else {
                     lic.Grupo = `solo_${lic.Id}`;
                 }
             });
         },
+        // FIN MOD TRNS #SistemaDeTurno-12-13
 
         _assignGroupColors: function (aLicences) {
             if (!Array.isArray(aLicences)) return;
@@ -7053,7 +8034,10 @@ sap.ui.define([
             var oFechaFin = this.byId("fechaFin") || sap.ui.core.Fragment.byId(this.getView().getId(), "fechaFin");
 
             if (!oFechaInicio || !oFechaFin) {
-                MessageToast.show("No se pudieron obtener los DatePickers.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudieron obtener los DatePickers.");
+                MessageHelper.show("No se pudieron obtener los DatePickers.");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -7225,7 +8209,10 @@ sap.ui.define([
                     }
 
                     this.hideGlobalBusy();
-                    MessageToast.show(`Reporte cargado`);
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show(`Reporte cargado`);
+                    MessageHelper.show(`Reporte cargado`);
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 })
                 .catch((error) => {
                     this.hideGlobalBusy();
@@ -7390,13 +8377,19 @@ sap.ui.define([
         // Función para descargar el reporte actual (desde la tab)
         onDescargarReporteActual: function () {
             if (!this._reporteFechaInicio || !this._reporteFechaFin) {
-                MessageToast.show("No hay datos de reporte cargados");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No hay datos de reporte cargados");
+                MessageHelper.show("No hay datos de reporte cargados");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
             // USAR LOS DATOS PROCESADOS GUARDADOS
             if (!this._datosReporteProcesados || this._datosReporteProcesados.length === 0) {
-                MessageToast.show("No hay datos para descargar");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No hay datos para descargar");
+                MessageHelper.show("No hay datos para descargar");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -7695,7 +8688,11 @@ sap.ui.define([
                     Turno: oRowData.TurnoAsignado,
                     Comentarios: oRowData.Comentarios,
                     Enviado: true,
-                    Agrmanual: oRowData.Agrmanual || false
+                    // INI MOD TRNS #SistemaDeTurno-12-13
+                    // Agrmanual: oRowData.Agrmanual || false
+                    Agrmanual: oRowData.Agrmanual || false,
+                    Desacoplado: oRowData.Desacoplado || false
+                    // FIN MOD TRNS #SistemaDeTurno-12-13
                 };
                 aData.push(row);
             });
@@ -7857,7 +8854,11 @@ sap.ui.define([
                     Turno: oLicense.TurnoAsignado || oLicense.Turno || "",
                     Comentarios: oLicense.Comentarios || "",
                     Enviado: false,  // ← Marcar como NO enviado
-                    Agrmanual: oLicense.Agrmanual || false
+                    // INI MOD TRNS #SistemaDeTurno-12-13
+                    // Agrmanual: oLicense.Agrmanual || false
+                    Agrmanual: oLicense.Agrmanual || false,
+                    Desacoplado: oLicense.Desacoplado || false
+                    // FIN MOD TRNS #SistemaDeTurno-12-13
                 };
             });
 
@@ -8016,7 +9017,10 @@ sap.ui.define([
                     }
 
                     if (aExitosos.length > 0) {
-                        MessageToast.show(`${aExitosos.length} mail(s) enviado(s) correctamente${aSaltadas.length > 0 ? ` (${aSaltadas.length} ya enviados)` : ''}`);
+                        // INI MOD TRNS #SistemaDeTurno-6
+                        // MessageToast.show(`${aExitosos.length} mail(s) enviado(s) correctamente${aSaltadas.length > 0 ? ` (${aSaltadas.length} ya enviados)` : ''}`);
+                        MessageHelper.show(`${aExitosos.length} mail(s) enviado(s) correctamente${aSaltadas.length > 0 ? ` (${aSaltadas.length} ya enviados)` : ''}`);
+                        // FIN MOD TRNS #SistemaDeTurno-6
 
                         // Guardar los turnos con Enviado = true solo para las licencias que tuvieron éxito (no saltadas)
                         const aLicenciasExitosas = aLicencias.filter(lic =>
@@ -8034,7 +9038,11 @@ sap.ui.define([
                                 Turno: oLicense.Turno || oLicense.TurnoAsignado || "",
                                 Comentarios: oLicense.Comentarios || "",
                                 Enviado: true, // Marcar como enviado
-                                Agrmanual: oLicense.Agrmanual || false
+                                // INI MOD TRNS #SistemaDeTurno-12-13
+                                // Agrmanual: oLicense.Agrmanual || false
+                                Agrmanual: oLicense.Agrmanual || false,
+                                Desacoplado: oLicense.Desacoplado || false
+                                // FIN MOD TRNS #SistemaDeTurno-12-13
                             };
                         });
 
@@ -8059,7 +9067,10 @@ sap.ui.define([
             this._currentAccionAttachmentContext = oEvent.getSource().getBindingContext("AccionesEntregaModel");
 
             if (!this._currentAccionAttachmentContext) {
-                MessageToast.show("No se pudo obtener la acción");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener la acción");
+                MessageHelper.show("No se pudo obtener la acción");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -8166,7 +9177,10 @@ sap.ui.define([
                     ? `Archivo agregado para ${aIds.length} licencias: ${file.name}`
                     : `Archivo agregado: ${file.name}`;
 
-                MessageToast.show(sMensaje);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show(sMensaje);
+                MessageHelper.show(sMensaje);
+                // FIN MOD TRNS #SistemaDeTurno-6
             }.bind(this);
 
             reader.onerror = function () {
@@ -8182,7 +9196,10 @@ sap.ui.define([
                 || oSource.getBindingContext("accionesTreeModel");
 
             if (!oContext) {
-                MessageToast.show("No se pudo obtener la acción");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener la acción");
+                MessageHelper.show("No se pudo obtener la acción");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -8190,7 +9207,10 @@ sap.ui.define([
 
             // Verificar si hay adjuntos
             if (!oAccion.Attachments || oAccion.Attachments.length === 0) {
-                MessageToast.show("No hay archivos adjuntos");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No hay archivos adjuntos");
+                MessageHelper.show("No hay archivos adjuntos");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -8339,7 +9359,10 @@ sap.ui.define([
                 link.click();
                 document.body.removeChild(link);
 
-                MessageToast.show("Descargando: " + oAttachment.AttachmentName);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Descargando: " + oAttachment.AttachmentName);
+                MessageHelper.show("Descargando: " + oAttachment.AttachmentName);
+                // FIN MOD TRNS #SistemaDeTurno-6
             } catch (error) {
                 MessageBox.error("Error al descargar el archivo");
             }
@@ -8365,7 +9388,10 @@ sap.ui.define([
             const oAccion = this._currentAccionForAttachments;
 
             if (!oAccion || !oAccion.Attachments) {
-                MessageToast.show("Error: No se pudo encontrar la acción");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Error: No se pudo encontrar la acción");
+                MessageHelper.show("Error: No se pudo encontrar la acción");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -8398,7 +9424,10 @@ sap.ui.define([
                             this._attachmentSelectorDialogAccion.close();
                         }
 
-                        MessageToast.show("Archivo eliminado: " + oAttachment.AttachmentName);
+                        // INI MOD TRNS #SistemaDeTurno-6
+                        // MessageToast.show("Archivo eliminado: " + oAttachment.AttachmentName);
+                        MessageHelper.show("Archivo eliminado: " + oAttachment.AttachmentName);
+                        // FIN MOD TRNS #SistemaDeTurno-6
 
                         this.onGuardarAccionesBackend();
                     },
@@ -8414,7 +9443,10 @@ sap.ui.define([
                 const oModel = this.getView().getModel("AccionesEntregaModel");
                 oModel.updateBindings(true);
 
-                MessageToast.show("Archivo eliminado: " + oAttachment.AttachmentName);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Archivo eliminado: " + oAttachment.AttachmentName);
+                MessageHelper.show("Archivo eliminado: " + oAttachment.AttachmentName);
+                // FIN MOD TRNS #SistemaDeTurno-6
 
                 // Cerrar diálogo
                 if (this._attachmentSelectorDialogAccion) {
@@ -8422,7 +9454,10 @@ sap.ui.define([
                 }
 
                 if (oAccion.Attachments.length === 0) {
-                    MessageToast.show("Todos los archivos fueron eliminados. Recuerde guardar los cambios.");
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show("Todos los archivos fueron eliminados. Recuerde guardar los cambios.");
+                    MessageHelper.show("Todos los archivos fueron eliminados. Recuerde guardar los cambios.");
+                    // FIN MOD TRNS #SistemaDeTurno-6
                 }
             }
         },
@@ -8613,11 +9648,25 @@ sap.ui.define([
 
                     // Agregar a la tabla
                     TurnosService.appendLicencesToModel(aLicenciasProcesadas, this.getView());
+                    // INI MOD TRNS #SistemaDeTurno-12-13
+                    // Rearmar grupos: las agregadas se suman al grupo de su equipo
+                    const oLicencesModel = this.getView().getModel("LicencesJsonModel");
+                    const aLicencesActuales = oLicencesModel.getData() || [];
+                    this._rebuildFrontendGroupsByEquipo(aLicencesActuales);
+                    this._assignGroupColors(aLicencesActuales);
+                    oLicencesModel.refresh(true);
+                    // FIN MOD TRNS #SistemaDeTurno-12-13
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    this._onTurnoModificado(null);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
                     this.hideGlobalBusy();
 
                     // Mensaje de éxito
-                    MessageToast.show(`${aLicenciasProcesadas.length} licencia(s) agregada(s) correctamente`);
+                    // INI MOD TRNS #SistemaDeTurno-6
+                    // MessageToast.show(`${aLicenciasProcesadas.length} licencia(s) agregada(s) correctamente`);
+                    MessageHelper.show(`${aLicenciasProcesadas.length} licencia(s) agregada(s) correctamente`);
+                    // FIN MOD TRNS #SistemaDeTurno-6
 
                     // Cerrar diálogo
                     this._dialogAgregarLicencia.close();
@@ -9122,7 +10171,10 @@ sap.ui.define([
             this._buildAccionesTreeModel();
 
             if (aAcciones.length > 0) {
-                MessageToast.show(`${aAcciones.length} acción(es) cargada(s)`);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show(`${aAcciones.length} acción(es) cargada(s)`);
+                MessageHelper.show(`${aAcciones.length} acción(es) cargada(s)`);
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
         },
 
@@ -9228,7 +10280,10 @@ sap.ui.define([
                 this._loadChartFragment();
                 this._computeChartFromAcciones();
 
-                sap.m.MessageToast.show("📊 Mostrando gráfico");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show("📊 Mostrando gráfico");
+                MessageHelper.show("📊 Mostrando gráfico");
+                // FIN MOD TRNS #SistemaDeTurno-6
             } else {
                 sap.m.MessageBox.error("No se pudo encontrar la pestaña de gráfico");
             }
@@ -9287,7 +10342,10 @@ sap.ui.define([
             var sAccion = oSelectedData.Accion || oSelectedData["Accion"] || "";
 
             if (!sAccion) {
-                sap.m.MessageToast.show("Error: No se pudo identificar la acción");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show("Error: No se pudo identificar la acción");
+                MessageHelper.show("Error: No se pudo identificar la acción");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -9299,7 +10357,10 @@ sap.ui.define([
             });
 
             if (!oCompleteData) {
-                sap.m.MessageToast.show("No se encontraron datos completos");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // sap.m.MessageToast.show("No se encontraron datos completos");
+                MessageHelper.show("No se encontraron datos completos");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -9566,17 +10627,26 @@ sap.ui.define([
             });
 
             // ── Solapa 4: Licencias ───────────────────────────────────────────────
-            var aLicDetalle = [["Equipo", "ID Licencia", "Estado", "Cond. Trabajo",
-                "Turno", "Trabajo a Realizar", "Región"]];
+            // INI MOD TRNS #SistemaDeTurno-4
+            // var aLicDetalle = [["Equipo", "ID Licencia", "Estado", "Cond. Trabajo",
+            //     "Turno", "Trabajo a Realizar", "Región"]];
+            var aLicDetalle = [["Equipo", "ID Licencia", "Estado",
+                "Turno", "Trabajo a Realizar", "Cond. Trabajo"]];
+            // FIN MOD TRNS #SistemaDeTurno-4
             (oLicModel ? oLicModel.getData() || [] : []).forEach(function (lic) {
                 aLicDetalle.push([
                     lic.Equnr || "",
                     lic.Id || "",
                     oFormatter.getEstado ? oFormatter.getEstado(lic.Equstat) : (lic.Equstat || ""),
-                    oFormatter.getJobCond ? oFormatter.getJobCond(lic.Jobcond) : (lic.Jobcond || ""),
+                    // INI MOD TRNS #SistemaDeTurno-4
+                    // oFormatter.getJobCond ? oFormatter.getJobCond(lic.Jobcond) : (lic.Jobcond || ""),
+                    // FIN MOD TRNS #SistemaDeTurno-4
                     lic.TurnoAsignado || "",
                     lic.Comments || "",
-                    oFormatter.getRegiones ? oFormatter.getRegiones(lic.Werks) : (lic.Werks || "")
+                    // INI MOD TRNS #SistemaDeTurno-4
+                    // oFormatter.getRegiones ? oFormatter.getRegiones(lic.Werks) : (lic.Werks || "")
+                    oFormatter.getJobCond ? oFormatter.getJobCond(lic.Jobcond) : (lic.Jobcond || "")
+                    // FIN MOD TRNS #SistemaDeTurno-4
                 ]);
             });
             if (aLicDetalle.length === 1) {
@@ -9593,7 +10663,10 @@ sap.ui.define([
 
                 var sHoy = new Date().toISOString().slice(0, 10);
                 XLSX.writeFile(Workbook, "Reporte_Desvios_" + sHoy + ".xlsx", { cellStyles: true });
-                MessageToast.show("Reporte de desvíos descargado correctamente.");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Reporte de desvíos descargado correctamente.");
+                MessageHelper.show("Reporte de desvíos descargado correctamente.");
+                // FIN MOD TRNS #SistemaDeTurno-6
             } catch (oError) {
                 MessageBox.error("Error al generar el reporte: " + oError.message);
             }
@@ -10212,7 +11285,10 @@ sap.ui.define([
 
             if (aLicenciasConManiobras.length === 0) {
                 console.log("⚠️ No hay licencias con maniobras para generar acciones");
-                MessageToast.show("No hay licencias con maniobras");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No hay licencias con maniobras");
+                MessageHelper.show("No hay licencias con maniobras");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -10368,13 +11444,19 @@ sap.ui.define([
             console.log("════════════════════════════════════════════\n");
 
             if (iAccionesGeneradas > 0) {
-                MessageToast.show(`${iAccionesGeneradas} acciones generadas automáticamente`, {
-                    duration: 3000
-                });
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show(`${iAccionesGeneradas} acciones generadas automáticamente`, {
+                //     duration: 3000
+                // });
+                MessageHelper.show(`${iAccionesGeneradas} acciones generadas automáticamente`);
+                // FIN MOD TRNS #SistemaDeTurno-6
             } else if (iAccionesOmitidas > 0) {
-                MessageToast.show("Todas las acciones ya existen", {
-                    duration: 2000
-                });
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("Todas las acciones ya existen", {
+                //     duration: 2000
+                // });
+                MessageHelper.show("Todas las acciones ya existen");
+                // FIN MOD TRNS #SistemaDeTurno-6
             }
         },
 
@@ -10449,7 +11531,10 @@ sap.ui.define([
             const oContext = oButton.getBindingContext("listCronoTreeModel");
 
             if (!oContext) {
-                MessageToast.show("No se pudo obtener el contexto");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener el contexto");
+                MessageHelper.show("No se pudo obtener el contexto");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -10462,7 +11547,10 @@ sap.ui.define([
                 [];
 
             if (aAdjuntos.length === 0) {
-                MessageToast.show("No hay adjuntos para esta licencia");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No hay adjuntos para esta licencia");
+                MessageHelper.show("No hay adjuntos para esta licencia");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -10505,7 +11593,10 @@ sap.ui.define([
             const oContext = oButton.getBindingContext("adjuntosModel");
 
             if (!oContext) {
-                MessageToast.show("No se pudo obtener el adjunto");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener el adjunto");
+                MessageHelper.show("No se pudo obtener el adjunto");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -10519,7 +11610,10 @@ sap.ui.define([
             const sMimeType = oAdjunto.Mimetype || "application/octet-stream";
 
             if (!sBase64) {
-                MessageToast.show("No se pudo obtener el contenido del archivo");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener el contenido del archivo");
+                MessageHelper.show("No se pudo obtener el contenido del archivo");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -10542,7 +11636,10 @@ sap.ui.define([
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
 
-                MessageToast.show(`Descargando: ${sFilename}`);
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show(`Descargando: ${sFilename}`);
+                MessageHelper.show(`Descargando: ${sFilename}`);
+                // FIN MOD TRNS #SistemaDeTurno-6
             } catch (error) {
                 console.error("Error al descargar:", error);
                 MessageBox.error("Error al descargar el archivo");
@@ -10669,7 +11766,10 @@ sap.ui.define([
             const oTreeContext = oButton.getBindingContext("listCronoTreeModel");
 
             if (!oTreeContext) {
-                MessageToast.show("No se pudo obtener el contexto");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se pudo obtener el contexto");
+                MessageHelper.show("No se pudo obtener el contexto");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -10681,7 +11781,10 @@ sap.ui.define([
             const oLicencia = aLicencias.find(lic => lic.Id === oNodeData.Id);
 
             if (!oLicencia) {
-                MessageToast.show("No se encontró la licencia");
+                // INI MOD TRNS #SistemaDeTurno-6
+                // MessageToast.show("No se encontró la licencia");
+                MessageHelper.show("No se encontró la licencia");
+                // FIN MOD TRNS #SistemaDeTurno-6
                 return;
             }
 
@@ -10775,7 +11878,10 @@ sap.ui.define([
                         return Promise.all(aPromises);
                     }).then(function () {
                         sap.ui.core.BusyIndicator.hide();
-                        sap.m.MessageToast.show("Mail enviado a CAMMESA correctamente");
+                        // INI MOD TRNS #SistemaDeTurno-6
+                        // sap.m.MessageToast.show("Mail enviado a CAMMESA correctamente");
+                        MessageHelper.show("Mail enviado a CAMMESA correctamente");
+                        // FIN MOD TRNS #SistemaDeTurno-6
                     }).catch(function (oError) {
                         sap.ui.core.BusyIndicator.hide();
                         sap.m.MessageBox.error("Error al enviar mail a CAMMESA: " + oError.message);

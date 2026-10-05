@@ -79,13 +79,20 @@
                     </HBox>
 
                     <HBox justifyContent="End" class="sapUiSmallMarginBottom">
+                        <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                        <!-- Botón "Aplicar": reemplaza a la lupa como disparador de los filtros del panel -->
+                        <Button icon="sap-icon://search" text="{i18n>applyFilters}" type="Emphasized" press="onFilter" class="sapUiTinyMarginEnd" />
+                        <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
+
                         <Button icon="sap-icon://add-filter" text="Filtros Avanzados" press="openAdvancedFilters" class="sapUiTinyMarginEnd" />
 
                         <Button icon="sap-icon://clear-filter" text="{i18n>clearFilters}" press="onClearFilter" />
                     </HBox>
                 </Panel>
 
-                <HBox justifyContent="End" class="sapUiSmallMarginBottom">
+                <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                <!-- Se eliminan la búsqueda rápida, la lupa y el botón "Actualizar" (se reemplazan por filtros de columna) -->
+                <!-- <HBox justifyContent="End" class="sapUiSmallMarginBottom">
                     <layoutData>
                         <FlexItemData shrinkFactor="0" />
                     </layoutData>
@@ -94,7 +101,8 @@
                     <Input id="fastSearchInput" placeholder="{i18n>quickSearch}" class="sapUiSmallMarginEnd" width="15rem" />
                     <Button icon="sap-icon://search" press="onFilter" type="Emphasized" class="sapUiSmallMarginEnd" />
                     <Button icon="sap-icon://refresh" press="onRefresh" class="sapUiSmallMarginEnd" />
-                </HBox>
+                </HBox> -->
+                <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
 
                 <IconTabBar id="mainTabBar" select=".onTabSelect" stretchContentHeight="true" class="fullHeightTabBar">
                     <layoutData>
@@ -102,7 +110,11 @@
                     </layoutData>
                     <items>
                         <IconTabFilter text="Turno" key="LIC" visible="{viewModel>/isProgramacion}">
-                            <t:Table id="turnosTable" selectionMode="None" selectionBehavior="Row" ariaLabelledBy="title2" rows="{LicencesJsonModel>/}" filter=".onColumnFilter">
+                            <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                            <!-- Alto de filas según el texto de "Trabajo a realizar" -->
+                            <!-- <t:Table id="turnosTable" selectionMode="None" selectionBehavior="Row" ariaLabelledBy="title2" rows="{LicencesJsonModel>/}" filter=".onColumnFilter"> -->
+                            <t:Table id="turnosTable" selectionMode="None" selectionBehavior="Row" ariaLabelledBy="title2" rows="{LicencesJsonModel>/}" filter=".onColumnFilter" columnResize=".onColumnResizeAltoFilas" rowsUpdated=".onRowsUpdatedAltoFilas">
+                            <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                 <!-- Muestra tantas filas como entren en el alto disponible -->
                                 <t:rowMode>
                                     <rowmodes:Auto minRowCount="5" />
@@ -151,7 +163,10 @@
                                         </t:template>
                                     </t:Column> -->
 
-                                    <t:Column width="130px" class="customColumnBackground" hAlign="Left" sortProperty="Equnr" filterProperty="Equnr">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="130px" class="customColumnBackground" hAlign="Left" sortProperty="Equnr" filterProperty="Equnr"> -->
+                                    <t:Column width="130px" class="customColumnBackground" hAlign="Left" filterProperty="Equnr">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>equipment}" />
                                         <t:template>
                                             <HBox alignItems="Center" justifyContent="Start" width="100%">
@@ -161,28 +176,41 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column hAlign="Center" width="140px" sortProperty="Id" filterProperty="Id">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column hAlign="Center" width="140px" sortProperty="Id" filterProperty="Id"> -->
+                                    <t:Column hAlign="Center" width="140px" filterProperty="Id">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="IdLicencia" />
                                         <t:template>
                                             <Text text="{path: 'LicencesJsonModel>Id', formatter: '.formatter.getJobCond'}" textAlign="Center" wrapping="true" />
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column id="status" width="150px" hAlign="Center" sortProperty="Equstat" filterProperty="Equstat">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="status" width="150px" hAlign="Center" sortProperty="Equstat" filterProperty="Equstat"> -->
+                                    <t:Column id="status" width="150px" hAlign="Center" filterProperty="Equstat">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>status}" class="back" />
                                         <t:template>
                                             <Text text="{ path: 'LicencesJsonModel>Equstat' ,formatter: '.formatter.getEstado' }" wrapping="false" />
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column hAlign="Center" width="200px" sortProperty="Jobcond" filterProperty="Jobcond">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-4 -->
+                                    <!-- Se mueve "Cond. de trabajo" a la posición de "Región" -->
+                                    <!-- <t:Column hAlign="Center" width="200px" sortProperty="Jobcond" filterProperty="Jobcond">
                                         <Label text="{i18n>conditionWork}" />
                                         <t:template>
                                             <Text text="{path: 'LicencesJsonModel>Jobcond', formatter: '.formatter.getJobCond'}" textAlign="Center" wrapping="true" />
                                         </t:template>
-                                    </t:Column>
+                                    </t:Column> -->
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-4 -->
 
-                                    <t:Column id="initHour" hAlign="Center" sortProperty="InitHourSort" filterProperty="InitHourSort">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="initHour" hAlign="Center" sortProperty="InitHourSort" filterProperty="InitHourSort"> -->
+                                    <!-- Sin filtro: InitHourSort es numérico (minutos) y el filtro de columna (Contains) da error en UI5 -->
+                                    <t:Column id="initHour" hAlign="Center">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>initHour}" textAlign="Center" />
                                         <t:template>
                                             <Text text="{parts: [
@@ -192,7 +220,10 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column id="toDoWork" width="450px" sortProperty="Descripcion" filterProperty="Descripcion">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="toDoWork" width="450px" sortProperty="Descripcion" filterProperty="Descripcion"> -->
+                                    <t:Column id="toDoWork" width="450px" filterProperty="Descripcion">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>toDoWork}" />
                                         <t:template>
                                             <Text text="{
@@ -218,21 +249,40 @@
                                         </t:template>
                                     </t:Column> -->
 
-                                    <t:Column id="region" width="150px" hAlign="Center" sortProperty="Werks" filterProperty="Werks">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-4 -->
+                                    <!-- Se reemplaza "Región" por "Cond. de trabajo" -->
+                                    <!-- <t:Column id="region" width="150px" hAlign="Center" sortProperty="Werks" filterProperty="Werks">
                                         <Label text="{i18n>region}" />
                                         <t:template>
                                             <Text text="{path: 'LicencesJsonModel>Werks', formatter: '.formatter.getRegiones'}" textAlign="Center" wrapping="true" />
                                         </t:template>
-                                    </t:Column>
+                                    </t:Column> -->
 
-                                    <t:Column id="console" hAlign="Center" sortProperty="Consola" filterProperty="Consola">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column hAlign="Center" width="200px" sortProperty="Jobcond" filterProperty="Jobcond"> -->
+                                    <t:Column hAlign="Center" width="200px" filterProperty="Jobcond">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
+                                        <Label text="{i18n>conditionWork}" />
+                                        <t:template>
+                                            <Text text="{path: 'LicencesJsonModel>Jobcond', formatter: '.formatter.getJobCond'}" textAlign="Center" wrapping="true" />
+                                        </t:template>
+                                    </t:Column>
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-4 -->
+
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="console" hAlign="Center" sortProperty="Consola" filterProperty="Consola"> -->
+                                    <t:Column id="console" hAlign="Center" filterProperty="Consola">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>console}" />
                                         <t:template>
                                             <Text text="{LicencesJsonModel>Consola}" wrapping="false" />
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column hAlign="Center" width="140px" filterProperty="TurnoAsignado" sortProperty="TurnoAsignado">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column hAlign="Center" width="140px" filterProperty="TurnoAsignado" sortProperty="TurnoAsignado"> -->
+                                    <t:Column hAlign="Center" width="140px" filterProperty="TurnoAsignado">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>shift}" textAlign="Center" />
                                         <t:template>
                                             <HBox alignItems="Center" justifyContent="SpaceBetween">
@@ -241,10 +291,16 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column id="comment" hAlign="Center" sortProperty="Comentarios" filterProperty="Comentarios">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="comment" hAlign="Center" sortProperty="Comentarios" filterProperty="Comentarios"> -->
+                                    <t:Column id="comment" hAlign="Center" filterProperty="Comentarios">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>comment}" />
                                         <t:template>
-                                            <Input value="{LicencesJsonModel>Comentarios}" enabled="{editableModel>/isEditable}" />
+                                            <!-- INI MOD TRNS #SistemaDeTurno-8-9-10 -->
+                                            <!-- <Input value="{LicencesJsonModel>Comentarios}" enabled="{editableModel>/isEditable}" /> -->
+                                            <Input value="{LicencesJsonModel>Comentarios}" enabled="{editableModel>/isEditable}" change=".onComentariosChange" />
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-8-9-10 -->
                                         </t:template>
                                     </t:Column>
 
@@ -259,7 +315,13 @@
                         </IconTabFilter>
 
                         <IconTabFilter text="Acciones para la entrega ({AccionesEntregaModel>/length})" key="ACCIONES" visible="{viewModel>/isProgramacion}">
-                            <t:Table id="accionesEntregaTable" rows="{AccionesEntregaModel>/}" selectionMode="None" alternateRowColors="true">
+                            <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                            <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                            <!-- #1: columnResize / rowsUpdated (alto de filas). #7: filter (filtro de columna por texto) -->
+                            <!-- <t:Table id="accionesEntregaTable" rows="{AccionesEntregaModel>/}" selectionMode="None" alternateRowColors="true"> -->
+                            <t:Table id="accionesEntregaTable" rows="{AccionesEntregaModel>/}" selectionMode="None" alternateRowColors="true" columnResize=".onColumnResizeAltoFilas" rowsUpdated=".onRowsUpdatedAltoFilas" filter=".onColumnFilterTexto">
+                            <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
+                            <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                 <t:rowMode>
                                     <rowmodes:Auto minRowCount="5" />
                                 </t:rowMode>
@@ -276,7 +338,10 @@
 
                                 <t:columns>
                                     <!-- Columna Equipo -->
-                                    <t:Column width="120px">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="120px"> -->
+                                    <t:Column width="120px" filterProperty="equipo">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Equipo" />
                                         <t:template>
                                             <Text text="{AccionesEntregaModel>equipo}" wrapping="false" />
@@ -284,7 +349,10 @@
                                     </t:Column>
 
                                     <!-- Columna IdLicencia -->
-                                    <t:Column width="150px">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="150px"> -->
+                                    <t:Column width="150px" filterProperty="idLicencia">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="IdLicencia" />
                                         <t:template>
                                             <Link text="{
@@ -295,7 +363,10 @@
                                     </t:Column>
 
                                     <!-- Columna Acción -->
-                                    <t:Column width="150px">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="150px"> -->
+                                    <t:Column width="150px" filterProperty="accion">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Acción" />
                                         <t:template>
                                             <Text text="{AccionesEntregaModel>accion}" wrapping="false" />
@@ -303,7 +374,10 @@
                                     </t:Column>
 
                                     <!-- Columna Descripción -->
-                                    <t:Column minWidth="300">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column minWidth="300"> -->
+                                    <t:Column minWidth="300" filterProperty="descripcion">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Descripción" />
                                         <t:template>
                                             <Text text="{AccionesEntregaModel>descripcion}" wrapping="true" />
@@ -311,7 +385,14 @@
                                     </t:Column>
 
                                     <!-- Columna Comentarios -->
-                                    <t:Column minWidth="250">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column minWidth="250"> -->
+                                    <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                                    <!-- Se agrega id para ajustar el alto de filas según esta columna -->
+                                    <!-- <t:Column minWidth="250" filterProperty="trabajoRealizar"> -->
+                                    <t:Column id="trabajoRealizarAcciones" minWidth="250" filterProperty="trabajoRealizar">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>accionComentarios}" />
                                         <t:template>
                                             <Text text="{AccionesEntregaModel>trabajoRealizar}" wrapping="true" />
@@ -319,7 +400,10 @@
                                     </t:Column>
 
                                     <!-- Columna Turno -->
-                                    <t:Column width="120px">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="120px"> -->
+                                    <t:Column width="120px" filterProperty="turnoEntrega">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Turno" />
                                         <t:template>
                                             <TimePicker value="{AccionesEntregaModel>turnoEntrega}" valueFormat="HH:mm" displayFormat="HH:mm" change="onTurnoEntregaChange" width="100%" enabled="{editableModel>/isEditable}" />
@@ -347,12 +431,23 @@
                         </IconTabFilter>
 
                         <IconTabFilter text="Listado Cronologico" key="CRONO">
+                            <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                            <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                            <!-- #1: columnResize genérico / rowsUpdated (alto de filas). #7: filter (filtro de columna por texto) -->
+                            <!-- <t:TreeTable id="cronoTreeTable" rows="{
+            path: 'listCronoTreeModel>/',
+            parameters: {
+                arrayNames: ['children']
+            }
+        }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title" toggleOpenState=".onToggleOpenState" columnResize=".onColumnResizeCrono"> -->
                             <t:TreeTable id="cronoTreeTable" rows="{
             path: 'listCronoTreeModel>/',
             parameters: {
                 arrayNames: ['children']
             }
-        }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title" toggleOpenState=".onToggleOpenState" columnResize=".onColumnResizeCrono">
+        }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title" toggleOpenState=".onToggleOpenState" columnResize=".onColumnResizeAltoFilas" rowsUpdated=".onRowsUpdatedAltoFilas" filter=".onColumnFilterTexto">
+                            <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
+                            <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                 <t:rowMode>
                                     <rowmodes:Auto minRowCount="5" />
                                 </t:rowMode>
@@ -362,7 +457,10 @@
 
                                 <t:columns>
                                     <!-- Columna de Equipo con icono de expansión -->
-                                    <t:Column id="equipmentCrono" width="200px" class="customColumnBackground" hAlign="Left">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="equipmentCrono" width="200px" class="customColumnBackground" hAlign="Left"> -->
+                                    <t:Column id="equipmentCrono" width="200px" class="customColumnBackground" hAlign="Left" filterProperty="Equnr">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>equipment}" />
                                         <t:template>
                                             <HBox alignItems="Center" justifyContent="Start" width="100%">
@@ -375,7 +473,11 @@
                                     </t:Column>
 
                                     <!-- IdLicencia -->
-                                    <t:Column hAlign="Center" width="150px">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column hAlign="Center" width="150px"> -->
+                                    <!-- Se filtra por el texto que se ve: "N LLTT" en el grupo, Id en la licencia -->
+                                    <t:Column hAlign="Center" width="150px" filterProperty="_txtIdLicencia">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="IdLicencia" />
                                         <t:template>
                                             <HBox alignItems="Center" justifyContent="Center">
@@ -388,7 +490,10 @@
                                     </t:Column>
 
                                     <!-- Estado -->
-                                    <t:Column id="statusCrono" width="150px" hAlign="Center">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="statusCrono" width="150px" hAlign="Center"> -->
+                                    <t:Column id="statusCrono" width="150px" hAlign="Center" filterProperty="_txtEstado">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>status}" class="back" />
                                         <t:template>
                                             <Text text="{ path: 'listCronoTreeModel>Equstat' ,formatter: '.formatter.getEstado' }" wrapping="false" />
@@ -396,15 +501,20 @@
                                     </t:Column>
 
                                     <!-- Condición de Trabajo -->
-                                    <t:Column hAlign="Center" width="200px">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column hAlign="Center" width="200px"> -->
+                                    <t:Column hAlign="Center" width="200px" filterProperty="_txtCondTrabajo">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>conditionWork}" />
                                         <t:template>
                                             <Text text="{path: 'listCronoTreeModel>Jobcond', formatter: '.formatter.getJobCond'}" textAlign="Center" wrapping="true" />
                                         </t:template>
                                     </t:Column>
 
-                                    <!-- Hora Inicio -->
-                                    <t:Column id="initHourCrono" hAlign="Center" width="50px">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="initHourCrono" hAlign="Center" width="50px"> -->
+                                    <t:Column id="initHourCrono" hAlign="Center" width="50px" filterProperty="_txtHoraInicio">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>initHour}" textAlign="Center" />
                                         <t:template>
                                             <Text text="{parts: [
@@ -415,15 +525,25 @@
                                     </t:Column>
 
                                     <!-- Trabajo a Realizar -->
-                                    <t:Column id="toDoWorkCrono" width="450px">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="toDoWorkCrono" width="450px"> -->
+                                    <t:Column id="toDoWorkCrono" width="450px" filterProperty="Comments">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>toDoWork}" />
                                         <t:template>
-                                            <Text text="{listCronoTreeModel>Comments}" wrapping="true" maxLines="6" tooltip="{listCronoTreeModel>Comments}" />
+                                            <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                                            <!-- Sin tope de líneas: la fila toma el alto del texto completo -->
+                                            <!-- <Text text="{listCronoTreeModel>Comments}" wrapping="true" maxLines="6" tooltip="{listCronoTreeModel>Comments}" /> -->
+                                            <Text text="{listCronoTreeModel>Comments}" wrapping="true" tooltip="{listCronoTreeModel>Comments}" />
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                         </t:template>
                                     </t:Column>
 
                                     <!-- Región -->
-                                    <t:Column id="regionCrono" width="130px" hAlign="Center">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="regionCrono" width="130px" hAlign="Center"> -->
+                                    <t:Column id="regionCrono" width="130px" hAlign="Center" filterProperty="_txtRegion">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>region}" />
                                         <t:template>
                                             <Text text="{path: 'listCronoTreeModel>Werks', formatter: '.formatter.getRegiones'}" textAlign="Center" wrapping="true" />
@@ -431,7 +551,10 @@
                                     </t:Column>
 
                                     <!-- Consola -->
-                                    <t:Column id="consoleCrono" width="130px" hAlign="Center">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="consoleCrono" width="130px" hAlign="Center"> -->
+                                    <t:Column id="consoleCrono" width="130px" hAlign="Center" filterProperty="Consola">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>console}" />
                                         <t:template>
                                             <Text text="{listCronoTreeModel>Consola}" wrapping="false" />
@@ -439,7 +562,10 @@
                                     </t:Column>
 
                                     <!-- Turno Asignado -->
-                                    <t:Column hAlign="Center" width="120px">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column hAlign="Center" width="120px"> -->
+                                    <t:Column hAlign="Center" width="120px" filterProperty="TurnoAsignado">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>shift}" textAlign="Center" />
                                         <t:template>
                                             <HBox justifyContent="Center" alignItems="Center">
@@ -448,7 +574,10 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column id="comentariosCrono" width="100px" hAlign="Center">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column id="comentariosCrono" width="100px" hAlign="Center"> -->
+                                    <t:Column id="comentariosCrono" width="100px" hAlign="Center" filterProperty="Comentarios">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Comentarios" />
                                         <t:template>
                                             <VBox>
@@ -478,17 +607,32 @@
                         </IconTabFilter>
 
                         <IconTabFilter text="Listado Cronológico de Acciones para la entrega" key="ACCIONES_CRONO">
+                            <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                            <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                            <!-- #1: columnResize / rowsUpdated (alto de filas). #7: filter (filtro de columna por texto) -->
+                            <!-- <t:TreeTable id="accionesCronoTreeTable" rows="{
+                                    path: 'accionesTreeModel>/',
+                                    parameters: {
+                                        arrayNames: ['children']
+                                    }
+                                }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title"> -->
                             <t:TreeTable id="accionesCronoTreeTable" rows="{
                                     path: 'accionesTreeModel>/',
                                     parameters: {
                                         arrayNames: ['children']
                                     }
-                                }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title">
+                                }" selectionMode="None" enableColumnReordering="false" enableSelectAll="false" ariaLabelledBy="title" columnResize=".onColumnResizeAltoFilas" rowsUpdated=".onRowsUpdatedAltoFilas" filter=".onColumnFilterTexto">
+                            <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
+                            <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                 <t:rowMode>
                                     <rowmodes:Auto minRowCount="5" />
                                 </t:rowMode>
                                 <t:columns>
-                                    <t:Column width="220px" hAlign="Left">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="220px" hAlign="Left"> -->
+                                    <!-- Se filtra por el texto que se ve: "N LLTT" en el grupo, acción en el hijo -->
+                                    <t:Column width="220px" hAlign="Left" filterProperty="_txtGrupoAccion">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Grupo / Acción" />
                                         <t:template>
                                             <HBox alignItems="Center">
@@ -505,35 +649,49 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column width="120px" hAlign="Left">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="120px" hAlign="Left"> -->
+                                    <t:Column width="120px" hAlign="Left" filterProperty="equipo">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Equipo" />
                                         <t:template>
                                             <Text text="{= ${accionesTreeModel>_isGroup} ? ${accionesTreeModel>equipo} : '' }" wrapping="false" class="text-bold" visible="{= ${accionesTreeModel>_isGroup} === true }" />
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column minWidth="300" hAlign="Left">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column minWidth="300" hAlign="Left"> -->
+                                    <t:Column minWidth="300" hAlign="Left" filterProperty="descripcion">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Descripción" />
                                         <t:template>
                                             <Text text="{= ${accionesTreeModel>_isGroup} ? '' : ${accionesTreeModel>descripcion} }" wrapping="true" visible="{= ${accionesTreeModel>_isGroup} === false }" />
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column width="120px" hAlign="Center">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="120px" hAlign="Center"> -->
+                                    <t:Column width="120px" hAlign="Center" filterProperty="turnoEntrega">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Turno de Entrega" />
                                         <t:template>
                                             <Text text="{accionesTreeModel>turnoEntrega}" textAlign="Center" wrapping="false" visible="{= ${accionesTreeModel>_isGroup} === false }" />
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column width="100px" hAlign="Center">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="100px" hAlign="Center"> -->
+                                    <t:Column width="100px" hAlign="Center" filterProperty="_txtPeriodo">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Periodo" />
                                         <t:template>
                                             <Text text="{= ${accionesTreeModel>period} === 'D' ? 'Diaria' : (${accionesTreeModel>period} === 'C' ? 'Continua' : ${accionesTreeModel>period}) }" textAlign="Center" wrapping="false" visible="{= ${accionesTreeModel>_isGroup} === false }" />
                                         </t:template>
                                     </t:Column>
-
-                                    <t:Column width="120px" hAlign="Center">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column width="120px" hAlign="Center"> -->
+                                    <t:Column width="120px" hAlign="Center" filterProperty="_txtFechaInicio">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="Fecha de Inicio" />
                                         <t:template>
                                             <Text text="{
@@ -543,7 +701,14 @@
                                         </t:template>
                                     </t:Column>
 
-                                    <t:Column minWidth="250" hAlign="Left">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- <t:Column minWidth="250" hAlign="Left"> -->
+                                    <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                                    <!-- Se agrega id para ajustar el alto de filas según esta columna -->
+                                    <!-- <t:Column minWidth="250" hAlign="Left" filterProperty="trabajoRealizar"> -->
+                                    <t:Column id="trabajoRealizarAccionesCrono" minWidth="250" hAlign="Left" filterProperty="trabajoRealizar">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>toDoWork}" />
                                         <t:template>
                                             <Text text="{accionesTreeModel>trabajoRealizar}" wrapping="true" visible="{= ${accionesTreeModel>_isGroup} === false }" />
@@ -640,34 +805,64 @@
                                 <VBox class="sapUiSmallMargin">
                                     <Title id="reporteTitle" text="Resumen Maniobras" level="H2" class="sapUiSmallMarginBottom" />
 
+                                    <!-- INI MOD TRNS #SistemaDeTurno-11 -->
+                                    <!-- Total de maniobras: cantidad de filas de reporteTable (ReporteModel) -->
+                                    <Title id="reporteTotalManiobras" text="{= 'TOTAL DE MANIOBRAS: ' + (${ReporteModel>/} ? ${ReporteModel>/}.length : 0) }" level="H3" titleStyle="H3" class="sapUiSmallMarginTop sapUiSmallMarginBottom" />
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-11 -->
+
                                     <HBox class="sapUiTinyMarginBottom">
                                         <Text id="reporteDateRange" text="Horarios de maniobras previstas desde: -- Hasta: --" />
                                     </HBox>
 
-                                    <t:Table id="reporteTable" rows="{ReporteModel>/}" selectionMode="None" enableColumnReordering="false">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                                    <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                    <!-- #1: columnResize / rowsUpdated (alto de filas). #7: filter (filtro de columna por texto) -->
+                                    <!-- <t:Table id="reporteTable" rows="{ReporteModel>/}" selectionMode="None" enableColumnReordering="false"> -->
+                                    <t:Table id="reporteTable" rows="{ReporteModel>/}" selectionMode="None" enableColumnReordering="false" columnResize=".onColumnResizeAltoFilas" rowsUpdated=".onRowsUpdatedAltoFilas" filter=".onColumnFilterTexto">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
+                                        <!-- Modo de filas explícito (10 filas, igual que el valor por defecto) para poder ajustar el alto de las filas -->
+                                        <t:rowMode>
+                                            <rowmodes:Fixed rowCount="10" />
+                                        </t:rowMode>
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                         <t:columns>
-                                            <t:Column width="120px">
+                                            <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                            <!-- <t:Column width="120px"> -->
+                                            <t:Column width="120px" filterProperty="Equipo">
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                                 <Label text="Equipo" />
                                                 <t:template>
                                                     <Text text="{ReporteModel>Equipo}" />
                                                 </t:template>
                                             </t:Column>
 
-                                            <t:Column width="100px">
+                                            <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                            <!-- <t:Column width="100px"> -->
+                                            <t:Column width="100px" filterProperty="Hora">
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                                 <Label text="Hora" />
                                                 <t:template>
                                                     <Text text="{ReporteModel>Hora}" />
                                                 </t:template>
                                             </t:Column>
 
-                                            <t:Column width="200px">
+                                            <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                            <!-- <t:Column width="200px"> -->
+                                            <t:Column width="200px" filterProperty="TipoIntervencion">
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                                 <Label text="Tipo de intervención" />
                                                 <t:template>
                                                     <Text text="{ReporteModel>TipoIntervencion}" wrapping="true" />
                                                 </t:template>
                                             </t:Column>
 
-                                            <t:Column width="300px">
+                                            <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                                            <!-- INI MOD TRNS #SistemaDeTurno-7 -->
+                                            <!-- #1: id para ajustar el alto de filas según esta columna. #7: filterProperty -->
+                                            <!-- <t:Column width="300px"> -->
+                                            <t:Column id="comentariosReporte" width="300px" filterProperty="Comentarios">
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                                 <Label text="Comentarios" />
                                                 <t:template>
                                                     <Text text="{ReporteModel>Comentarios}" wrapping="true" />

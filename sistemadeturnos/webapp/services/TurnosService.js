@@ -228,25 +228,44 @@ sap.ui.define([
                         // Buscar el registro que corresponde a la fecha del turno actual.
                         // TurnosLicencias_nav puede traer registros de múltiples fechas,
                         // por lo que hay que usar el que coincide con license.Dateturno.
-                        let nav = license.TurnosLicencias_nav.results[0];
-                        if (license.Dateturno && license.TurnosLicencias_nav.results.length > 1) {
-                            const targetTime = license.Dateturno instanceof Date
-                                ? license.Dateturno.getTime()
-                                : new Date(license.Dateturno).getTime();
-                            const navFecha = license.TurnosLicencias_nav.results.find(function (r) {
-                                const rTime = r.Dateturno instanceof Date
-                                    ? r.Dateturno.getTime()
-                                    : new Date(r.Dateturno).getTime();
-                                return rTime === targetTime;
-                            });
-                            if (navFecha) { nav = navFecha; }
+                        // INI MOD TRNS #SistemaDeTurno-12-13
+                        // let nav = license.TurnosLicencias_nav.results[0];
+                        // if (license.Dateturno && license.TurnosLicencias_nav.results.length > 1) {
+                        //     const targetTime = license.Dateturno instanceof Date
+                        //         ? license.Dateturno.getTime()
+                        //         : new Date(license.Dateturno).getTime();
+                        //     const navFecha = license.TurnosLicencias_nav.results.find(function (r) {
+                        //         const rTime = r.Dateturno instanceof Date
+                        //             ? r.Dateturno.getTime()
+                        //             : new Date(r.Dateturno).getTime();
+                        //         return rTime === targetTime;
+                        //     });
+                        //     if (navFecha) { nav = navFecha; }
+                        // }
+                        //
+                        // license.TurnoAsignado = nav.Turno;
+                        // license.Comentarios = nav.Comentarios;
+                        // license.Agrmanual = nav.Agrmanual || false;
+                        //
+                        // return;
+
+                        // Solo se usa el registro de la fecha del turno, aunque sea el único:
+                        // un registro de otra fecha no es el turno de este día.
+                        const sFechaTurno = license.Dateturno ? this._claveFechaTurno(license.Dateturno) : "";
+                        const nav = sFechaTurno
+                            ? license.TurnosLicencias_nav.results.find(r => this._claveFechaTurno(r.Dateturno) === sFechaTurno)
+                            : null;
+
+                        if (nav) {
+                            license.TurnoAsignado = nav.Turno;
+                            license.Comentarios = nav.Comentarios;
+                            license.Agrmanual = nav.Agrmanual || false;
+                            license.Desacoplado = nav.Desacoplado === true;
+
+                            return;
                         }
-
-                        license.TurnoAsignado = nav.Turno;
-                        license.Comentarios = nav.Comentarios;
-                        license.Agrmanual = nav.Agrmanual || false;
-
-                        return;
+                        // Sin registro para esta fecha: se calcula como licencia nueva (pasos 2-4)
+                        // FIN MOD TRNS #SistemaDeTurno-12-13
                     }
 
                     // 2) Obtener duración
@@ -302,6 +321,19 @@ sap.ui.define([
             let [hours, minutes] = timeString.split(":").map(Number);
             return hours * 60 + minutes;
         },
+        // INI MOD TRNS #SistemaDeTurno-12-13
+        // Clave "AAAA-M-D" de una fecha de turno. Las fechas OData (Edm.DateTime) llegan a las
+        // 00:00 UTC y las del DatePicker a las 00:00 locales: se toma el día que corresponde a cada caso.
+        _claveFechaTurno: function (vFecha) {
+            const d = vFecha instanceof Date ? vFecha : new Date(vFecha);
+            if (isNaN(d.getTime())) return "";
+
+            const bMedianocheUTC = d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+            return bMedianocheUTC
+                ? d.getUTCFullYear() + "-" + (d.getUTCMonth() + 1) + "-" + d.getUTCDate()
+                : d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+        },
+        // FIN MOD TRNS #SistemaDeTurno-12-13
         appendLicencesToModel: function (licencesToAdd, oView) {
             const aNewLicences = Array.isArray(licencesToAdd) ? licencesToAdd : [licencesToAdd];
             if (!aNewLicences.length) return;
@@ -321,6 +353,23 @@ sap.ui.define([
 
                     // ❗ GRUPO DESACOPLADO (clave!)
                     copia.Grupo = `_Desacoplado_${copia.Id}`;
+
+                    // INI MOD TRNS #SistemaDeTurno-12-13
+                    copia.Desacoplado = false;
+
+                    // Si su equipo ya está en el turno (acoplado y con hora), se suma a ese grupo:
+                    // se copian Grupo y TurnoAsignado, no se calcula nada.
+                    const sEquipo = (copia.Equnr || "").trim();
+                    const oMismoEquipo = sEquipo && aCurrent.find(c =>
+                        c.Desacoplado !== true &&
+                        (c.Equnr || "").trim() === sEquipo &&
+                        c.TurnoAsignado
+                    );
+                    if (oMismoEquipo) {
+                        copia.Grupo = oMismoEquipo.Grupo;
+                        copia.TurnoAsignado = oMismoEquipo.TurnoAsignado;
+                    }
+                    // FIN MOD TRNS #SistemaDeTurno-12-13
 
                     return copia;
                 });

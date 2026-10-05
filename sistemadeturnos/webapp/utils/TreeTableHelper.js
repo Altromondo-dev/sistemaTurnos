@@ -2,7 +2,12 @@
  * Helper para transformar datos planos en estructura jerárquica para TreeTable
  * Agrupa por Equipo + Horario
  */
-sap.ui.define([], function () {
+// INI MOD TRNS #SistemaDeTurno-7
+// sap.ui.define([], function () {
+sap.ui.define([
+    "transener/sistemadeturnos/utils/FormatHelper"
+], function (FormatHelper) {
+// FIN MOD TRNS #SistemaDeTurno-7
     "use strict";
 
     return {
@@ -25,7 +30,14 @@ sap.ui.define([], function () {
                 const equipo = licencia.Equnr || "Sin Equipo";
                 const turnoAsignado = licencia.TurnoAsignado || "Sin Turno";
 
-                const grupoKey = `${equipo}|${turnoAsignado}`;
+                // INI MOD TRNS #SistemaDeTurno-12-13
+                // const grupoKey = `${equipo}|${turnoAsignado}`;
+                // Una licencia desacoplada tiene clave propia: nunca se agrupa con otras,
+                // aunque coincidan equipo y hora
+                const grupoKey = licencia.Desacoplado === true
+                    ? `${equipo}|${turnoAsignado}|${licencia.Id}`
+                    : `${equipo}|${turnoAsignado}`;
+                // FIN MOD TRNS #SistemaDeTurno-12-13
 
                 if (!grupos[grupoKey]) {
                     grupos[grupoKey] = {
@@ -61,6 +73,11 @@ sap.ui.define([], function () {
 
             // Convertir el objeto de grupos a array
             const aTreeData = Object.values(grupos);
+
+            // INI MOD TRNS #SistemaDeTurno-7
+            // Textos para el filtro de columna (lo que se ve en cada celda)
+            aTreeData.forEach(grupo => this._asignarTextosFiltro(grupo));
+            // FIN MOD TRNS #SistemaDeTurno-7
 
             // Ordenar grupos por Equipo y luego por TurnoAsignado
             aTreeData.sort((a, b) => {
@@ -100,16 +117,53 @@ sap.ui.define([], function () {
 
                 // Si hay hijos que coinciden, incluir el grupo
                 if (aFilteredChildren.length > 0) {
-                    aFilteredGroups.push({
+                    // INI MOD TRNS #SistemaDeTurno-7
+                    // El grupo filtrado tiene otra cantidad de hijos: se recalculan sus textos de filtro.
+                    // Los hijos se copian para no pisar los textos del árbol original.
+                    // aFilteredGroups.push({
+                    //     ...grupo,
+                    //     children: aFilteredChildren,
+                    //     _childCount: aFilteredChildren.length
+                    // });
+                    const oGrupoFiltrado = {
                         ...grupo,
-                        children: aFilteredChildren,
+                        children: aFilteredChildren.map(child => ({ ...child })),
                         _childCount: aFilteredChildren.length
-                    });
+                    };
+                    this._asignarTextosFiltro(oGrupoFiltrado);
+                    aFilteredGroups.push(oGrupoFiltrado);
+                    // FIN MOD TRNS #SistemaDeTurno-7
                 }
             });
 
             return aFilteredGroups;
         },
+
+        // INI MOD TRNS #SistemaDeTurno-7
+        /**
+         * Asigna al grupo y a sus hijos el texto que muestra cada celda, para usarlo
+         * como filterProperty en el filtro de columna
+         *
+         * @param {Object} oGrupo - Nodo grupo con sus hijos en children
+         */
+        _asignarTextosFiltro: function (oGrupo) {
+            const sTextoGrupo = oGrupo._childCount + " LLTT";
+
+            [oGrupo].concat(oGrupo.children).forEach(oNodo => {
+                oNodo._txtEstado = FormatHelper.getEstado(oNodo.Equstat) || "";
+                oNodo._txtCondTrabajo = FormatHelper.getJobCond(oNodo.Jobcond) || "";
+                oNodo._txtRegion = FormatHelper.getRegiones(oNodo.Werks) || "";
+                oNodo._txtHoraInicio = FormatHelper.formatInitHour(oNodo.Timbeg, oNodo.Gdate) || "";
+            });
+
+            // IdLicencia: el padre muestra "N LLTT" y el hijo su Id. El hijo lleva también el texto
+            // del grupo, para que al filtrar por "N LLTT" el grupo se pueda expandir (igual que Equipo)
+            oGrupo._txtIdLicencia = sTextoGrupo;
+            oGrupo.children.forEach(oHijo => {
+                oHijo._txtIdLicencia = (oHijo.Id || "") + " " + sTextoGrupo;
+            });
+        },
+        // FIN MOD TRNS #SistemaDeTurno-7
 
         /**
          * Verifica si un registro coincide con los filtros
