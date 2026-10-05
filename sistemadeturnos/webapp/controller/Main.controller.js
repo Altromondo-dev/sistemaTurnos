@@ -91,12 +91,26 @@ sap.ui.define([
             // Si la primera medición del alto de filas se hizo con la fuente de reemplazo, al terminar
             // de cargar las fuentes ("72") se vuelve a medir la tabla de la solapa visible.
             // "loadingdone" cubre fuentes que empiezan a cargar después de que ready ya se resolvió.
+            // if (document.fonts && document.fonts.ready) {
+            //     document.fonts.ready.then(() => this._reajustarAltoFilasSolapaVisible());
+            //     document.fonts.addEventListener("loadingdone", () => this._reajustarAltoFilasSolapaVisible());
+            // }
+            // Con debounce (varias cargas seguidas = una sola medición) y solo hasta que la "72" esté cargada:
+            // después se desregistra. También se desregistra en onExit.
             if (document.fonts && document.fonts.ready) {
-                document.fonts.ready.then(() => this._reajustarAltoFilasSolapaVisible());
-                document.fonts.addEventListener("loadingdone", () => this._reajustarAltoFilasSolapaVisible());
+                this._fnFuentesCargadas = () => this._programarReajustePorFuentes();
+                document.fonts.ready.then(this._fnFuentesCargadas);
+                document.fonts.addEventListener("loadingdone", this._fnFuentesCargadas);
             }
             // FIN MOD TRNS #SistemaDeTurno-1
         },
+
+        // INI MOD TRNS #SistemaDeTurno-1
+        onExit: function () {
+            this._desregistrarListenerFuentes();
+            Object.values(this._mTimersAltoFilas || {}).forEach(clearTimeout);
+        },
+        // FIN MOD TRNS #SistemaDeTurno-1
 
         getBaseURL: function () {
             var appId = this.getOwnerComponent().getManifestEntry("/sap.app/id");
@@ -1897,6 +1911,36 @@ sap.ui.define([
             return mTablaPorSolapa[sKey];
         },
 
+        // Listener de fuentes (ready / loadingdone): las cargas seguidas se agrupan en una sola medición.
+        // Una vez que la "72" está cargada ya no hace falta volver a medir y se desregistra.
+        _programarReajustePorFuentes: function () {
+            if (!this._fnFuentesCargadas) {
+                return; // ya desregistrado (fuente cargada u onExit): ignora el ready pendiente
+            }
+            clearTimeout(this._iTimerFuentesAltoFilas);
+            this._iTimerFuentesAltoFilas = setTimeout(() => {
+                this._reajustarAltoFilasSolapaVisible();
+
+                let bFuente72Cargada = false;
+                try {
+                    bFuente72Cargada = document.fonts.check('14px "72"');
+                } catch (oError) {
+                    bFuente72Cargada = false;
+                }
+                if (bFuente72Cargada) {
+                    this._desregistrarListenerFuentes();
+                }
+            }, 300);
+        },
+
+        _desregistrarListenerFuentes: function () {
+            clearTimeout(this._iTimerFuentesAltoFilas);
+            if (this._fnFuentesCargadas && document.fonts) {
+                document.fonts.removeEventListener("loadingdone", this._fnFuentesCargadas);
+            }
+            this._fnFuentesCargadas = null;
+        },
+
         // Al terminar de cargar las fuentes: se descarta el cache de mediciones (puede venir de la
         // fuente de reemplazo) y se vuelve a medir la solapa visible; las demás se miden al entrar
         // Se llama desde los listeners de fuentes: un error acá no tiene que quedar como "Uncaught"
@@ -1972,14 +2016,11 @@ sap.ui.define([
 
             // Se miden todos los textos (grupos e hijos), no solo las filas visibles
             const aTextos = [];
-            // TEMPORAL (diagnóstico QAS, quitar antes de PRD): nodo de cada texto, para saber qué licencia da el máximo
-            const aNodosTexto = [];
             const fnJuntar = (aNodos) => {
                 (Array.isArray(aNodos) ? aNodos : []).forEach((oNodo) => {
                     const sTexto = fnTexto(oNodo);
                     if (sTexto) {
                         aTextos.push(sTexto);
-                        aNodosTexto.push(oNodo); // TEMPORAL (diagnóstico QAS)
                     }
                     if (oNodo.children) {
                         fnJuntar(oNodo.children);
@@ -2014,62 +2055,15 @@ sap.ui.define([
             //     iLineas = Math.max(iLineas, Math.round(oMedidor.offsetHeight / iAltoLinea));
             // });
 
-            // try/finally: el medidor se quita del DOM siempre, aunque falle la medición o el log
+            // try/finally: el medidor se quita del DOM siempre, aunque falle la medición
             try {
                 oMedidor.textContent = "X";
                 iAltoLinea = oMedidor.offsetHeight;
 
-                const aMedidas = aTextos.map((sTexto, i) => {
+                aTextos.forEach((sTexto) => {
                     oMedidor.textContent = sTexto;
-                    const iLineasTexto = Math.round(oMedidor.offsetHeight / iAltoLinea);
-                    iLineas = Math.max(iLineas, iLineasTexto);
-                    return { i: i, lineas: iLineasTexto, texto: sTexto };
+                    iLineas = Math.max(iLineas, Math.round(oMedidor.offsetHeight / iAltoLinea));
                 });
-
-                // ===== TEMPORAL (diagnóstico QAS del alto de filas): quitar este bloque antes de PRD =====
-                // En la consola del navegador filtrar por "[AltoFilas]".
-                // try/catch: un error del diagnóstico nunca corta el ajuste del alto.
-                try {
-                    const fnEstiloTemporal = (oDom) => {
-                        const e = oDom ? getComputedStyle(oDom) : null;
-                        return e ? e.fontFamily + " | " + e.fontSize + " | lh " + e.lineHeight + " | ws " + e.whiteSpace + " | wrap " + e.overflowWrap : "(sin celda renderizada)";
-                    };
-                    const sEstiloMedidorTemporal = fnEstiloTemporal(oMedidor); // antes de quitarlo del DOM
-                    const oTextoCeldaTemporal = oTableDom.querySelector('[data-sap-ui-colid="' + oColumna.getId() + '"] .sapMText');
-                    const fnInfoTemporal = (m) => {
-                        const o = aNodosTexto[m.i] || {};
-                        return {
-                            Id: o.Id || o.idLicencia || o.IdLicencia || "",
-                            lineasMedidas: m.lineas,
-                            largo: m.texto.length,
-                            saltosN: (m.texto.match(/\n/g) || []).length,
-                            saltosR: (m.texto.match(/\r/g) || []).length,
-                            inicio: m.texto.slice(0, 120)
-                        };
-                    };
-                    const aTopTemporal = aMedidas.slice().sort((a, b) => b.lineas - a.lineas).slice(0, 5).map(fnInfoTemporal);
-                    console.info("[AltoFilas] " + this.getView().getLocalId(oTable.getId()), {
-                        anchoColumna: iAnchoColumna || oColumnDom.offsetWidth,
-                        anchoColumnaOrigen: iAnchoColumna ? "columnResize" : "offsetWidth",
-                        paddingHorizontal: iPaddingHorizontal,
-                        iAnchoTexto: iAnchoTexto,
-                        anchoTextoCeldaReal: oTextoCeldaTemporal ? oTextoCeldaTemporal.clientWidth : null,
-                        iAltoLinea: iAltoLinea,
-                        iLineasMedidas: iLineas,
-                        iLineasFinal: Math.min(iLineas, MAX_LINEAS),
-                        cantidadTextos: aTextos.length,
-                        estiloMedidor: sEstiloMedidorTemporal,
-                        estiloCelda: fnEstiloTemporal(oTextoCeldaTemporal),
-                        // fuente72Cargada: document.fonts ? document.fonts.check("14px 72") : "n/d",
-                        // La familia va entre comillas: "14px 72" no es un font shorthand válido (72 se lee como número)
-                        fuente72Cargada: document.fonts ? document.fonts.check('14px "72"') : "n/d",
-                        maximo: aTopTemporal[0],
-                        top5: aTopTemporal
-                    });
-                } catch (oErrorTemporal) {
-                    console.warn("[AltoFilas] error en el log temporal (no afecta el ajuste del alto)", oErrorTemporal);
-                }
-                // ===== FIN TEMPORAL =====
             } finally {
                 // oMedidor.remove();
                 oMedidor.remove();

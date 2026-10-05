@@ -827,14 +827,19 @@
 
                             <Panel headerText="Resumen de maniobras" expandable="true" expanded="true" class="sapUiResponsiveMargin" width="auto">
                                 <VBox class="sapUiSmallMargin">
-                                    <Title id="reporteTitle" text="Resumen Maniobras" level="H2" class="sapUiSmallMarginBottom" />
+                                    <!-- INI MOD TRNS #SistemaDeTurno-11 -->
+                                    <!-- Misma separación que entre el total y la línea de horarios (sapUiTinyMarginBottom = 0.5rem) -->
+                                    <!-- <Title id="reporteTitle" text="Resumen Maniobras" level="H2" class="sapUiSmallMarginBottom" /> -->
+                                    <Title id="reporteTitle" text="Resumen Maniobras" level="H2" class="sapUiTinyMarginBottom" />
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-11 -->
 
                                     <!-- INI MOD TRNS #SistemaDeTurno-11 -->
                                     <!-- Total de maniobras: cantidad de filas de reporteTable (ReporteModel) -->
                                     <!-- <Title id="reporteTotalManiobras" text="{= 'TOTAL DE MANIOBRAS: ' + (${ReporteModel>/} ? ${ReporteModel>/}.length : 0) }" level="H3" titleStyle="H3" class="sapUiSmallMarginTop sapUiSmallMarginBottom" /> -->
                                     <!-- Mismo control y estilo que reporteDateRange (Text dentro de HBox sapUiTinyMarginBottom) -->
                                     <HBox class="sapUiTinyMarginBottom">
-                                        <Text id="reporteTotalManiobras" text="{= 'TOTAL DE MANIOBRAS: ' + (${ReporteModel>/} ? ${ReporteModel>/}.length : 0) }" />
+                                        <!-- <Text id="reporteTotalManiobras" text="{= 'TOTAL DE MANIOBRAS: ' + (${ReporteModel>/} ? ${ReporteModel>/}.length : 0) }" /> -->
+                                        <Text id="reporteTotalManiobras" text="{= 'Total de Maniobras: ' + (${ReporteModel>/} ? ${ReporteModel>/}.length : 0) }" />
                                     </HBox>
                                     <!-- FIN MOD TRNS #SistemaDeTurno-11 -->
 
