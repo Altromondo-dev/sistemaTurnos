@@ -86,6 +86,16 @@ sap.ui.define([
                     });
                 });
             }
+
+            // INI MOD TRNS #SistemaDeTurno-1
+            // Si la primera medición del alto de filas se hizo con la fuente de reemplazo, al terminar
+            // de cargar las fuentes ("72") se vuelve a medir la tabla de la solapa visible.
+            // "loadingdone" cubre fuentes que empiezan a cargar después de que ready ya se resolvió.
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => this._reajustarAltoFilasSolapaVisible());
+                document.fonts.addEventListener("loadingdone", () => this._reajustarAltoFilasSolapaVisible());
+            }
+            // FIN MOD TRNS #SistemaDeTurno-1
         },
 
         getBaseURL: function () {
@@ -1777,16 +1787,21 @@ sap.ui.define([
             //     // se espera a que la solapa se muestre para poder medir la tabla
             //     setTimeout(() => this._ajustarAltoFilasCrono(), 0);
             // }
-            const mTablaPorSolapa = {
-                LIC: "turnosTable",
-                ACCIONES: "accionesEntregaTable",
-                CRONO: "cronoTreeTable",
-                ACCIONES_CRONO: "accionesCronoTreeTable",
-                REPORTE: "reporteTable"
-            };
-            if (mTablaPorSolapa[key]) {
+            // const mTablaPorSolapa = {
+            //     LIC: "turnosTable",
+            //     ACCIONES: "accionesEntregaTable",
+            //     CRONO: "cronoTreeTable",
+            //     ACCIONES_CRONO: "accionesCronoTreeTable",
+            //     REPORTE: "reporteTable"
+            // };
+            // if (mTablaPorSolapa[key]) {
+            //     // se espera a que la solapa se muestre para poder medir la tabla
+            //     setTimeout(() => this._ajustarAltoFilasTabla(mTablaPorSolapa[key]), 0);
+            // }
+            const sTablaAltoFilas = this._getTablaAltoFilasDeSolapa(key);
+            if (sTablaAltoFilas) {
                 // se espera a que la solapa se muestre para poder medir la tabla
-                setTimeout(() => this._ajustarAltoFilasTabla(mTablaPorSolapa[key]), 0);
+                setTimeout(() => this._ajustarAltoFilasTabla(sTablaAltoFilas), 0);
             }
             // FIN MOD TRNS #SistemaDeTurno-1
         },
@@ -1870,6 +1885,29 @@ sap.ui.define([
             return mConfig[sTablaId];
         },
 
+        // Tabla que ajusta el alto de filas en cada solapa (key del IconTabBar)
+        _getTablaAltoFilasDeSolapa: function (sKey) {
+            const mTablaPorSolapa = {
+                LIC: "turnosTable",
+                ACCIONES: "accionesEntregaTable",
+                CRONO: "cronoTreeTable",
+                ACCIONES_CRONO: "accionesCronoTreeTable",
+                REPORTE: "reporteTable"
+            };
+            return mTablaPorSolapa[sKey];
+        },
+
+        // Al terminar de cargar las fuentes: se descarta el cache de mediciones (puede venir de la
+        // fuente de reemplazo) y se vuelve a medir la solapa visible; las demás se miden al entrar
+        _reajustarAltoFilasSolapaVisible: function () {
+            this._mClaveAltoFilas = {};
+            const oIconTabBar = this.byId("mainTabBar");
+            const sTablaId = oIconTabBar && this._getTablaAltoFilasDeSolapa(oIconTabBar.getSelectedKey());
+            if (sTablaId) {
+                this._ajustarAltoFilasTabla(sTablaId);
+            }
+        },
+
         // Recalcula el alto de filas cuando se cambia el ancho de la columna de referencia
         onColumnResizeAltoFilas: function (oEvent) {
             const sTablaId = this.getView().getLocalId(oEvent.getSource().getId());
@@ -1899,9 +1937,12 @@ sap.ui.define([
             }
         },
 
-        // Ajusta el alto de todas las filas según el texto más largo de la columna, sin tope de líneas.
+        // // Ajusta el alto de todas las filas según el texto más largo de la columna, sin tope de líneas.
+        // Ajusta el alto de todas las filas según el texto más largo de la columna, con tope de MAX_LINEAS
+        // (las celdas tienen el mismo maxLines y cortan con "..."; el texto completo queda en el tooltip).
         // fnTexto devuelve, para cada fila (o nodo del árbol), el texto tal como se ve en la celda.
         _ajustarAltoFilas: function (oTable, oColumna, fnTexto, iAnchoColumna) {
+            const MAX_LINEAS = 10;
             const oTableDom = oTable && oTable.getDomRef();
             const oColumnDom = oColumna && oColumna.getDomRef();
             const oBinding = oTable && oTable.getBinding("rows");
@@ -1920,11 +1961,14 @@ sap.ui.define([
 
             // Se miden todos los textos (grupos e hijos), no solo las filas visibles
             const aTextos = [];
+            // TEMPORAL (diagnóstico QAS, quitar antes de PRD): nodo de cada texto, para saber qué licencia da el máximo
+            const aNodosTexto = [];
             const fnJuntar = (aNodos) => {
                 (Array.isArray(aNodos) ? aNodos : []).forEach((oNodo) => {
                     const sTexto = fnTexto(oNodo);
                     if (sTexto) {
                         aTextos.push(sTexto);
+                        aNodosTexto.push(oNodo); // TEMPORAL (diagnóstico QAS)
                     }
                     if (oNodo.children) {
                         fnJuntar(oNodo.children);
@@ -1951,11 +1995,58 @@ sap.ui.define([
             const iAltoLinea = oMedidor.offsetHeight;
 
             let iLineas = 1;
-            aTextos.forEach((sTexto) => {
+            // aTextos.forEach((sTexto) => {
+            //     oMedidor.textContent = sTexto;
+            //     iLineas = Math.max(iLineas, Math.round(oMedidor.offsetHeight / iAltoLinea));
+            // });
+            const aMedidas = aTextos.map((sTexto, i) => {
                 oMedidor.textContent = sTexto;
-                iLineas = Math.max(iLineas, Math.round(oMedidor.offsetHeight / iAltoLinea));
+                const iLineasTexto = Math.round(oMedidor.offsetHeight / iAltoLinea);
+                iLineas = Math.max(iLineas, iLineasTexto);
+                return { i: i, lineas: iLineasTexto, texto: sTexto };
             });
+
+            // ===== TEMPORAL (diagnóstico QAS del alto de filas): quitar este bloque antes de PRD =====
+            // En la consola del navegador filtrar por "[AltoFilas]"
+            const fnEstiloTemporal = (oDom) => {
+                const e = oDom ? getComputedStyle(oDom) : null;
+                return e ? e.fontFamily + " | " + e.fontSize + " | lh " + e.lineHeight + " | ws " + e.whiteSpace + " | wrap " + e.overflowWrap : "(sin celda renderizada)";
+            };
+            const sEstiloMedidorTemporal = fnEstiloTemporal(oMedidor); // antes de quitarlo del DOM
+            const oTextoCeldaTemporal = oTableDom.querySelector('[data-sap-ui-colid="' + oColumna.getId() + '"] .sapMText');
+            const fnInfoTemporal = (m) => {
+                const o = aNodosTexto[m.i] || {};
+                return {
+                    Id: o.Id || o.idLicencia || o.IdLicencia || "",
+                    lineasMedidas: m.lineas,
+                    largo: m.texto.length,
+                    saltosN: (m.texto.match(/\n/g) || []).length,
+                    saltosR: (m.texto.match(/\r/g) || []).length,
+                    inicio: m.texto.slice(0, 120)
+                };
+            };
+            const aTopTemporal = aMedidas.slice().sort((a, b) => b.lineas - a.lineas).slice(0, 5).map(fnInfoTemporal);
+            console.info("[AltoFilas] " + this.getView().getLocalId(oTable.getId()), {
+                anchoColumna: iAnchoColumna || oColumnDom.offsetWidth,
+                anchoColumnaOrigen: iAnchoColumna ? "columnResize" : "offsetWidth",
+                paddingHorizontal: iPaddingHorizontal,
+                iAnchoTexto: iAnchoTexto,
+                anchoTextoCeldaReal: oTextoCeldaTemporal ? oTextoCeldaTemporal.clientWidth : null,
+                iAltoLinea: iAltoLinea,
+                iLineasMedidas: iLineas,
+                iLineasFinal: Math.min(iLineas, MAX_LINEAS),
+                cantidadTextos: aTextos.length,
+                estiloMedidor: sEstiloMedidorTemporal,
+                estiloCelda: fnEstiloTemporal(oTextoCeldaTemporal),
+                fuente72Cargada: document.fonts ? document.fonts.check("14px 72") : "n/d",
+                maximo: aTopTemporal[0],
+                top5: aTopTemporal
+            });
+            // ===== FIN TEMPORAL =====
+
             oMedidor.remove();
+
+            iLineas = Math.min(iLineas, MAX_LINEAS);
 
             // El alto se define en el modo de filas de la tabla (alto del contenido, sin márgenes).
             // Con una sola línea se vuelve al alto estándar.

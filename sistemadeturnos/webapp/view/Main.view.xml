@@ -226,6 +226,9 @@
                                     <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>toDoWork}" />
                                         <t:template>
+                                            <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                                            <!-- <Text text="{ parts: [ ...8 campos... ], formatter: '.formatter.buildParteDiarioCammesa' }" wrapping="true" /> -->
+                                            <!-- Tope de 10 líneas (igual que MAX_LINEAS en _ajustarAltoFilas); texto completo en el tooltip -->
                                             <Text text="{
                                                     parts: [
                                                         'LicencesJsonModel>R500kv',
@@ -238,7 +241,20 @@
                                                         'LicencesJsonModel>Id'
                                                     ],
                                                     formatter: '.formatter.buildParteDiarioCammesa'
-                                                }" wrapping="true" />
+                                                }" wrapping="true" maxLines="10" tooltip="{
+                                                    parts: [
+                                                        'LicencesJsonModel>R500kv',
+                                                        'LicencesJsonModel>Bloqueo',
+                                                        'LicencesJsonModel>Barrafs',
+                                                        'LicencesJsonModel>Barrafstx',
+                                                        'LicencesJsonModel>Equiinterv',
+                                                        'LicencesJsonModel>Descripcion',
+                                                        'LicencesJsonModel>Solend',
+                                                        'LicencesJsonModel>Id'
+                                                    ],
+                                                    formatter: '.formatter.buildParteDiarioCammesa'
+                                                }" />
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                         </t:template>
                                     </t:Column>
 
@@ -395,7 +411,10 @@
                                     <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>accionComentarios}" />
                                         <t:template>
-                                            <Text text="{AccionesEntregaModel>trabajoRealizar}" wrapping="true" />
+                                            <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                                            <!-- <Text text="{AccionesEntregaModel>trabajoRealizar}" wrapping="true" /> -->
+                                            <Text text="{AccionesEntregaModel>trabajoRealizar}" wrapping="true" maxLines="10" tooltip="{AccionesEntregaModel>trabajoRealizar}" />
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                         </t:template>
                                     </t:Column>
 
@@ -534,7 +553,9 @@
                                             <!-- INI MOD TRNS #SistemaDeTurno-1 -->
                                             <!-- Sin tope de líneas: la fila toma el alto del texto completo -->
                                             <!-- <Text text="{listCronoTreeModel>Comments}" wrapping="true" maxLines="6" tooltip="{listCronoTreeModel>Comments}" /> -->
-                                            <Text text="{listCronoTreeModel>Comments}" wrapping="true" tooltip="{listCronoTreeModel>Comments}" />
+                                            <!-- <Text text="{listCronoTreeModel>Comments}" wrapping="true" tooltip="{listCronoTreeModel>Comments}" /> -->
+                                            <!-- Tope de 10 líneas, igual que MAX_LINEAS en _ajustarAltoFilas -->
+                                            <Text text="{listCronoTreeModel>Comments}" wrapping="true" maxLines="10" tooltip="{listCronoTreeModel>Comments}" />
                                             <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                         </t:template>
                                     </t:Column>
@@ -711,7 +732,10 @@
                                     <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>toDoWork}" />
                                         <t:template>
-                                            <Text text="{accionesTreeModel>trabajoRealizar}" wrapping="true" visible="{= ${accionesTreeModel>_isGroup} === false }" />
+                                            <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                                            <!-- <Text text="{accionesTreeModel>trabajoRealizar}" wrapping="true" visible="{= ${accionesTreeModel>_isGroup} === false }" /> -->
+                                            <Text text="{accionesTreeModel>trabajoRealizar}" wrapping="true" maxLines="10" tooltip="{accionesTreeModel>trabajoRealizar}" visible="{= ${accionesTreeModel>_isGroup} === false }" />
+                                            <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                         </t:template>
                                     </t:Column>
 
@@ -869,7 +893,10 @@
                                             <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                                 <Label text="Comentarios" />
                                                 <t:template>
-                                                    <Text text="{ReporteModel>Comentarios}" wrapping="true" />
+                                                    <!-- INI MOD TRNS #SistemaDeTurno-1 -->
+                                                    <!-- <Text text="{ReporteModel>Comentarios}" wrapping="true" /> -->
+                                                    <Text text="{ReporteModel>Comentarios}" wrapping="true" maxLines="10" tooltip="{ReporteModel>Comentarios}" />
+                                                    <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
                                                 </t:template>
                                             </t:Column>
                                         </t:columns>
