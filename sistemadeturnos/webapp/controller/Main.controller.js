@@ -756,8 +756,11 @@ sap.ui.define([
                 return aAcciones;
             }
 
-            console.log("📋 Ordenando acciones por grupo y hora...");
-            console.log("   Total acciones a ordenar:", aAcciones.length);
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            // Logs de debug: con la sincronización en vivo se ejecutan en cada cambio del Turno
+            // console.log("📋 Ordenando acciones por grupo y hora...");
+            // console.log("   Total acciones a ordenar:", aAcciones.length);
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             // Función helper para normalizar el grupo (ordenar los IDs alfabéticamente)
             const normalizarGrupo = function (sGrupo) {
@@ -775,7 +778,9 @@ sap.ui.define([
 
                 if (grupoA !== grupoB) {
                     const resultado = grupoA.localeCompare(grupoB);
-                    console.log(`   Comparando grupos: "${grupoA}" vs "${grupoB}" = ${resultado}`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   Comparando grupos: "${grupoA}" vs "${grupoB}" = ${resultado}`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     return resultado;
                 }
 
@@ -783,7 +788,9 @@ sap.ui.define([
                 const horaA = a.turnoEntrega || "00:00";
                 const horaB = b.turnoEntrega || "00:00";
 
-                console.log(`   Mismo grupo "${grupoA}": comparando horas "${horaA}" vs "${horaB}"`);
+                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                // console.log(`   Mismo grupo "${grupoA}": comparando horas "${horaA}" vs "${horaB}"`);
+                // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
                 // Manejar formato de hora correctamente
                 const partsA = horaA.split(":");
@@ -799,7 +806,9 @@ sap.ui.define([
                 const totalMinutosB = (horasB * 60) + minutosB;
 
                 const resultadoHora = totalMinutosA - totalMinutosB;
-                console.log(`      ${horaA} (${totalMinutosA} min) vs ${horaB} (${totalMinutosB} min) = ${resultadoHora}`);
+                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                // console.log(`      ${horaA} (${totalMinutosA} min) vs ${horaB} (${totalMinutosB} min) = ${resultadoHora}`);
+                // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
                 return resultadoHora;
             });
@@ -10904,7 +10913,10 @@ sap.ui.define([
                 return "";
             }
 
-            console.log(`🕐 Calculando horario para acción ${sCodigoAccion} con T Eq = ${sTurnoBase}`);
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            // Logs de debug: con la sincronización en vivo se ejecutan en cada cambio del Turno
+            // console.log(`🕐 Calculando horario para acción ${sCodigoAccion} con T Eq = ${sTurnoBase}`);
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             // Convertir T Eq (turnoBase) a minutos
             const [horas, minutos] = sTurnoBase.split(":").map(Number);
@@ -10914,7 +10926,9 @@ sap.ui.define([
             const shiftInfo = Utils.getShiftInfo(oLicencia);
             const tManStd = shiftInfo.duration; // 45, 30, 20, 15 o 10 min
 
-            console.log(`   📊 T ManStd para esta licencia: ${tManStd} min`);
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            // console.log(`   📊 T ManStd para esta licencia: ${tManStd} min`);
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             let horarioCalculadoMinutos = tEqMinutos;
 
@@ -10927,59 +10941,79 @@ sap.ui.define([
                 case "SOL COC":
                     // Fórmula: T SOL COC = T Eq - T Aviso
                     horarioCalculadoMinutos = tEqMinutos - T_AVISO;
-                    console.log(`   ✅ SOL COC: T Eq(${sTurnoBase}) - T Aviso(${T_AVISO}min)`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ SOL COC: T Eq(${sTurnoBase}) - T Aviso(${T_AVISO}min)`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 case "SOL TEC":
                     // Fórmula: T SOL TEC = T Eq - 20 min
                     horarioCalculadoMinutos = tEqMinutos - 20;
-                    console.log(`   ✅ SOL TEC: T Eq(${sTurnoBase}) - 20min`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ SOL TEC: T Eq(${sTurnoBase}) - 20min`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 case "AUT COC":
                     // Fórmula: T AUT COC = T Eq - 10 min
                     horarioCalculadoMinutos = tEqMinutos - 10;
-                    console.log(`   ✅ AUT COC: T Eq(${sTurnoBase}) - 10min`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ AUT COC: T Eq(${sTurnoBase}) - 10min`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 case "INI MAN":
                     // Fórmula: T Eq = F/S PR Horario del turno
                     // Es el turno base (sin cambios)
                     horarioCalculadoMinutos = tEqMinutos;
-                    console.log(`   ✅ INI MAN: T Eq = ${sTurnoBase}`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ INI MAN: T Eq = ${sTurnoBase}`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 case "COL PAT":
                     // Fórmula: T COL PAT = T INI MAN + T ManStd
                     horarioCalculadoMinutos = tEqMinutos + tManStd;
-                    console.log(`   ✅ COL PAT: T Eq(${sTurnoBase}) + T ManStd(${tManStd}min)`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ COL PAT: T Eq(${sTurnoBase}) + T ManStd(${tManStd}min)`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 case "FIN MAN":
                     // Fórmula: T FIN MAN = T INI MAN + T ManStd + 0
                     horarioCalculadoMinutos = tEqMinutos + tManStd;
-                    console.log(`   ✅ FIN MAN: T Eq(${sTurnoBase}) + T ManStd(${tManStd}min)`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ FIN MAN: T Eq(${sTurnoBase}) + T ManStd(${tManStd}min)`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 case "FIN LT":
                     horarioCalculadoMinutos = T_PES - T_MANCOT - tManStd;
-                    console.log(`   ✅ FIN LT: T PES(17:00) - T ManCOT(${T_MANCOT}min) - T ManStd(${tManStd}min)`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ FIN LT: T PES(17:00) - T ManCOT(${T_MANCOT}min) - T ManStd(${tManStd}min)`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 case "RET PAT":
                     horarioCalculadoMinutos = T_PES - T_MANCOT;
-                    console.log(`   ✅ RET PAT: T PES(17:00) - T ManCOT(${T_MANCOT}min)`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ RET PAT: T PES(17:00) - T ManCOT(${T_MANCOT}min)`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 case "MAN PES":
                     horarioCalculadoMinutos = T_PES - T_MANCOT;
-                    console.log(`   ✅ MAN PES: T PES(17:00) - T ManCOT(${T_MANCOT}min)`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ MAN PES: T PES(17:00) - T ManCOT(${T_MANCOT}min)`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 case "PES":
                 case "FCS":
                     horarioCalculadoMinutos = T_PES;
-                    console.log(`   ✅ PES/FCS: 17:00`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ PES/FCS: 17:00`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     break;
 
                 default:
@@ -10996,7 +11030,9 @@ sap.ui.define([
                 String(horasResultado).padStart(2, '0') + ":" +
                 String(minutosResultado).padStart(2, '0');
 
-            console.log(`   🎯 Horario calculado: ${horarioFinal}\n`);
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            // console.log(`   🎯 Horario calculado: ${horarioFinal}\n`);
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             return horarioFinal;
         },
@@ -11376,13 +11412,18 @@ sap.ui.define([
             let aAccionesExistentes = oAccionesModel.getData() || [];
 
             if (aLicencias.length === 0) {
-                console.log("⚠️ No hay licencias para procesar");
+                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                // Logs de debug: con la sincronización en vivo se ejecutan en cada cambio del Turno
+                // console.log("⚠️ No hay licencias para procesar");
+                // FIN MOD TRNS #SistemaDeTurno-8-9-10
                 return;
             }
 
-            console.log("🤖 ════════════════════════════════════════════");
-            console.log("🤖 GENERACIÓN AUTOMÁTICA DE ACCIONES");
-            console.log("════════════════════════════════════════════\n");
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            // console.log("🤖 ════════════════════════════════════════════");
+            // console.log("🤖 GENERACIÓN AUTOMÁTICA DE ACCIONES");
+            // console.log("════════════════════════════════════════════\n");
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             // 🔍 Filtrar licencias CON maniobras
             const aLicenciasConManiobras = aLicencias.filter(licencia => {
@@ -11396,12 +11437,16 @@ sap.ui.define([
                 return esConManiobras;
             });
 
-            console.log(`📊 Licencias totales: ${aLicencias.length}`);
-            console.log(`✅ Licencias CON maniobras: ${aLicenciasConManiobras.length}`);
-            console.log(`⏭️ Licencias SIN maniobras: ${aLicencias.length - aLicenciasConManiobras.length}\n`);
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            // console.log(`📊 Licencias totales: ${aLicencias.length}`);
+            // console.log(`✅ Licencias CON maniobras: ${aLicenciasConManiobras.length}`);
+            // console.log(`⏭️ Licencias SIN maniobras: ${aLicencias.length - aLicenciasConManiobras.length}\n`);
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             if (aLicenciasConManiobras.length === 0) {
-                console.log("⚠️ No hay licencias con maniobras para generar acciones");
+                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                // console.log("⚠️ No hay licencias con maniobras para generar acciones");
+                // FIN MOD TRNS #SistemaDeTurno-8-9-10
                 // INI MOD TRNS #SistemaDeTurno-6
                 // MessageToast.show("No hay licencias con maniobras");
                 MessageHelper.show("No hay licencias con maniobras");
@@ -11422,7 +11467,9 @@ sap.ui.define([
                 mLicenciasPorGrupo[sGrupo].push(licencia);
             });
 
-            console.log(`👥 Grupos identificados: ${Object.keys(mLicenciasPorGrupo).length}\n`);
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            // console.log(`👥 Grupos identificados: ${Object.keys(mLicenciasPorGrupo).length}\n`);
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             let iAccionesGeneradas = 0;
             let iAccionesOmitidas = 0;
@@ -11441,17 +11488,21 @@ sap.ui.define([
                 const aIdsGrupo = aLicenciasGrupo.map(lic => lic.Id);
                 const sIdsGrupo = aIdsGrupo.join(" / ");
 
-                console.log(`📌 Grupo: ${sIdsGrupo}`);
-                console.log(`   Categoría: ${info.category}`);
-                console.log(`   Equipo: ${oLicenciaPrincipal.Equnr || 'N/A'}`);
-                console.log(`   Turno: ${oLicenciaPrincipal.TurnoAsignado || 'N/A'}`);
+                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                // console.log(`📌 Grupo: ${sIdsGrupo}`);
+                // console.log(`   Categoría: ${info.category}`);
+                // console.log(`   Equipo: ${oLicenciaPrincipal.Equnr || 'N/A'}`);
+                // console.log(`   Turno: ${oLicenciaPrincipal.TurnoAsignado || 'N/A'}`);
+                // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
                 // 📋 Definir acciones según categoría
                 let aAccionesAutomaticas;
 
                 if (esConsignacion) {
                     // ✅ CONSIGNACIÓN: Todas las 9 acciones (incluye COL PAT y RET PAT)
-                    console.log(`   ✅ Consignación → Genera 9 acciones (con COL PAT y RET PAT)`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ✅ Consignación → Genera 9 acciones (con COL PAT y RET PAT)`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     aAccionesAutomaticas = [
                         { codigo: "SOL TEC", descripcion: "El técnico confirmará los trabajos al COT" },
                         { codigo: "AUT COC", descripcion: "El COC y agentes involucrados autorizan" },
@@ -11465,7 +11516,9 @@ sap.ui.define([
                     ];
                 } else {
                     // ⚠️ MANIOBRAS SIN CONSIGNACIÓN: 7 acciones (SIN COL PAT ni RET PAT)
-                    console.log(`   ⚠️ Sin Consignación → Genera 7 acciones (sin COL PAT ni RET PAT)`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`   ⚠️ Sin Consignación → Genera 7 acciones (sin COL PAT ni RET PAT)`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                     aAccionesAutomaticas = [
                         { codigo: "SOL TEC", descripcion: "El técnico confirmará los trabajos al COT" },
                         { codigo: "AUT COC", descripcion: "El COC y agentes involucrados autorizan" },
@@ -11485,14 +11538,18 @@ sap.ui.define([
                 });
 
                 const aCodigosExistentes = aAccionesExistentesGrupo.map(a => a.accion);
-                console.log(`   Acciones existentes: ${aCodigosExistentes.length} (${aCodigosExistentes.join(', ') || 'ninguna'})`);
+                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                // console.log(`   Acciones existentes: ${aCodigosExistentes.length} (${aCodigosExistentes.join(', ') || 'ninguna'})`);
+                // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
                 // Generar acciones faltantes
                 aAccionesAutomaticas.forEach(accionDef => {
                     const sCodigo = accionDef.codigo;
 
                     if (aCodigosExistentes.includes(sCodigo)) {
-                        console.log(`      ⏭️ ${sCodigo} ya existe`);
+                        // INI MOD TRNS #SistemaDeTurno-8-9-10
+                        // console.log(`      ⏭️ ${sCodigo} ya existe`);
+                        // FIN MOD TRNS #SistemaDeTurno-8-9-10
                         iAccionesOmitidas++;
                         return;
                     }
@@ -11501,7 +11558,9 @@ sap.ui.define([
                     const sTurnoBase = oLicenciaPrincipal.TurnoAsignado || "";
 
                     if (!sTurnoBase || sTurnoBase.trim() === "") {
-                        console.log(`      ⚠️ ${sCodigo} - SIN turno asignado, omitiendo`);
+                        // INI MOD TRNS #SistemaDeTurno-8-9-10
+                        // console.log(`      ⚠️ ${sCodigo} - SIN turno asignado, omitiendo`);
+                        // FIN MOD TRNS #SistemaDeTurno-8-9-10
                         iAccionesOmitidas++;
                         return;
                     }
@@ -11540,10 +11599,14 @@ sap.ui.define([
                     aAccionesExistentes.push(oNuevaAccion);
                     iAccionesGeneradas++;
 
-                    console.log(`      ➕ ${sCodigo} generada - Turno: ${sTurnoCalculado}`);
+                    // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // console.log(`      ➕ ${sCodigo} generada - Turno: ${sTurnoCalculado}`);
+                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
                 });
 
-                console.log("");
+                // INI MOD TRNS #SistemaDeTurno-8-9-10
+                // console.log("");
+                // FIN MOD TRNS #SistemaDeTurno-8-9-10
             });
 
             // Ordenar acciones por grupo y hora
@@ -11553,12 +11616,14 @@ sap.ui.define([
             oAccionesModel.setData(aAccionesOrdenadas);
             oAccionesModel.refresh();
 
-            console.log("════════════════════════════════════════════");
-            console.log("✅ RESULTADO:");
-            console.log(`   Acciones generadas: ${iAccionesGeneradas}`);
-            console.log(`   Acciones omitidas (ya existían): ${iAccionesOmitidas}`);
-            console.log(`   Total acciones ahora: ${aAccionesOrdenadas.length}`);
-            console.log("════════════════════════════════════════════\n");
+            // INI MOD TRNS #SistemaDeTurno-8-9-10
+            // console.log("════════════════════════════════════════════");
+            // console.log("✅ RESULTADO:");
+            // console.log(`   Acciones generadas: ${iAccionesGeneradas}`);
+            // console.log(`   Acciones omitidas (ya existían): ${iAccionesOmitidas}`);
+            // console.log(`   Total acciones ahora: ${aAccionesOrdenadas.length}`);
+            // console.log("════════════════════════════════════════════\n");
+            // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
             if (iAccionesGeneradas > 0) {
                 // INI MOD TRNS #SistemaDeTurno-6
