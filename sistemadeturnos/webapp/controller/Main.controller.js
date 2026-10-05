@@ -1899,12 +1899,23 @@ sap.ui.define([
 
         // Al terminar de cargar las fuentes: se descarta el cache de mediciones (puede venir de la
         // fuente de reemplazo) y se vuelve a medir la solapa visible; las demás se miden al entrar
+        // Se llama desde los listeners de fuentes: un error acá no tiene que quedar como "Uncaught"
         _reajustarAltoFilasSolapaVisible: function () {
-            this._mClaveAltoFilas = {};
-            const oIconTabBar = this.byId("mainTabBar");
-            const sTablaId = oIconTabBar && this._getTablaAltoFilasDeSolapa(oIconTabBar.getSelectedKey());
-            if (sTablaId) {
-                this._ajustarAltoFilasTabla(sTablaId);
+            // this._mClaveAltoFilas = {};
+            // const oIconTabBar = this.byId("mainTabBar");
+            // const sTablaId = oIconTabBar && this._getTablaAltoFilasDeSolapa(oIconTabBar.getSelectedKey());
+            // if (sTablaId) {
+            //     this._ajustarAltoFilasTabla(sTablaId);
+            // }
+            try {
+                this._mClaveAltoFilas = {};
+                const oIconTabBar = this.byId("mainTabBar");
+                const sTablaId = oIconTabBar && this._getTablaAltoFilasDeSolapa(oIconTabBar.getSelectedKey());
+                if (sTablaId) {
+                    this._ajustarAltoFilasTabla(sTablaId);
+                }
+            } catch (oError) {
+                console.warn("[AltoFilas] no se pudo reajustar el alto de filas al cargar las fuentes", oError);
             }
         },
 
@@ -1983,7 +1994,9 @@ sap.ui.define([
             if (this._mClaveAltoFilas[oTable.getId()] === sClave) {
                 return;
             }
-            this._mClaveAltoFilas[oTable.getId()] = sClave;
+            // La clave se guarda recién después de aplicar el alto (al final): si algo falla en el medio,
+            // la próxima llamada vuelve a medir
+            // this._mClaveAltoFilas[oTable.getId()] = sClave;
 
             // Medidor invisible con la misma fuente que las celdas; pre-line respeta los saltos de línea como sap.m.Text
             const oMedidor = document.createElement("div");
@@ -1991,66 +2004,85 @@ sap.ui.define([
             oMedidor.style.cssText = "position:absolute;visibility:hidden;white-space:pre-line;word-wrap:break-word;width:" + iAnchoTexto + "px";
             oTableDom.appendChild(oMedidor);
 
-            oMedidor.textContent = "X";
-            const iAltoLinea = oMedidor.offsetHeight;
+            // oMedidor.textContent = "X";
+            // const iAltoLinea = oMedidor.offsetHeight;
+            let iAltoLinea = 0;
 
             let iLineas = 1;
             // aTextos.forEach((sTexto) => {
             //     oMedidor.textContent = sTexto;
             //     iLineas = Math.max(iLineas, Math.round(oMedidor.offsetHeight / iAltoLinea));
             // });
-            const aMedidas = aTextos.map((sTexto, i) => {
-                oMedidor.textContent = sTexto;
-                const iLineasTexto = Math.round(oMedidor.offsetHeight / iAltoLinea);
-                iLineas = Math.max(iLineas, iLineasTexto);
-                return { i: i, lineas: iLineasTexto, texto: sTexto };
-            });
 
-            // ===== TEMPORAL (diagnóstico QAS del alto de filas): quitar este bloque antes de PRD =====
-            // En la consola del navegador filtrar por "[AltoFilas]"
-            const fnEstiloTemporal = (oDom) => {
-                const e = oDom ? getComputedStyle(oDom) : null;
-                return e ? e.fontFamily + " | " + e.fontSize + " | lh " + e.lineHeight + " | ws " + e.whiteSpace + " | wrap " + e.overflowWrap : "(sin celda renderizada)";
-            };
-            const sEstiloMedidorTemporal = fnEstiloTemporal(oMedidor); // antes de quitarlo del DOM
-            const oTextoCeldaTemporal = oTableDom.querySelector('[data-sap-ui-colid="' + oColumna.getId() + '"] .sapMText');
-            const fnInfoTemporal = (m) => {
-                const o = aNodosTexto[m.i] || {};
-                return {
-                    Id: o.Id || o.idLicencia || o.IdLicencia || "",
-                    lineasMedidas: m.lineas,
-                    largo: m.texto.length,
-                    saltosN: (m.texto.match(/\n/g) || []).length,
-                    saltosR: (m.texto.match(/\r/g) || []).length,
-                    inicio: m.texto.slice(0, 120)
-                };
-            };
-            const aTopTemporal = aMedidas.slice().sort((a, b) => b.lineas - a.lineas).slice(0, 5).map(fnInfoTemporal);
-            console.info("[AltoFilas] " + this.getView().getLocalId(oTable.getId()), {
-                anchoColumna: iAnchoColumna || oColumnDom.offsetWidth,
-                anchoColumnaOrigen: iAnchoColumna ? "columnResize" : "offsetWidth",
-                paddingHorizontal: iPaddingHorizontal,
-                iAnchoTexto: iAnchoTexto,
-                anchoTextoCeldaReal: oTextoCeldaTemporal ? oTextoCeldaTemporal.clientWidth : null,
-                iAltoLinea: iAltoLinea,
-                iLineasMedidas: iLineas,
-                iLineasFinal: Math.min(iLineas, MAX_LINEAS),
-                cantidadTextos: aTextos.length,
-                estiloMedidor: sEstiloMedidorTemporal,
-                estiloCelda: fnEstiloTemporal(oTextoCeldaTemporal),
-                fuente72Cargada: document.fonts ? document.fonts.check("14px 72") : "n/d",
-                maximo: aTopTemporal[0],
-                top5: aTopTemporal
-            });
-            // ===== FIN TEMPORAL =====
+            // try/finally: el medidor se quita del DOM siempre, aunque falle la medición o el log
+            try {
+                oMedidor.textContent = "X";
+                iAltoLinea = oMedidor.offsetHeight;
 
-            oMedidor.remove();
+                const aMedidas = aTextos.map((sTexto, i) => {
+                    oMedidor.textContent = sTexto;
+                    const iLineasTexto = Math.round(oMedidor.offsetHeight / iAltoLinea);
+                    iLineas = Math.max(iLineas, iLineasTexto);
+                    return { i: i, lineas: iLineasTexto, texto: sTexto };
+                });
+
+                // ===== TEMPORAL (diagnóstico QAS del alto de filas): quitar este bloque antes de PRD =====
+                // En la consola del navegador filtrar por "[AltoFilas]".
+                // try/catch: un error del diagnóstico nunca corta el ajuste del alto.
+                try {
+                    const fnEstiloTemporal = (oDom) => {
+                        const e = oDom ? getComputedStyle(oDom) : null;
+                        return e ? e.fontFamily + " | " + e.fontSize + " | lh " + e.lineHeight + " | ws " + e.whiteSpace + " | wrap " + e.overflowWrap : "(sin celda renderizada)";
+                    };
+                    const sEstiloMedidorTemporal = fnEstiloTemporal(oMedidor); // antes de quitarlo del DOM
+                    const oTextoCeldaTemporal = oTableDom.querySelector('[data-sap-ui-colid="' + oColumna.getId() + '"] .sapMText');
+                    const fnInfoTemporal = (m) => {
+                        const o = aNodosTexto[m.i] || {};
+                        return {
+                            Id: o.Id || o.idLicencia || o.IdLicencia || "",
+                            lineasMedidas: m.lineas,
+                            largo: m.texto.length,
+                            saltosN: (m.texto.match(/\n/g) || []).length,
+                            saltosR: (m.texto.match(/\r/g) || []).length,
+                            inicio: m.texto.slice(0, 120)
+                        };
+                    };
+                    const aTopTemporal = aMedidas.slice().sort((a, b) => b.lineas - a.lineas).slice(0, 5).map(fnInfoTemporal);
+                    console.info("[AltoFilas] " + this.getView().getLocalId(oTable.getId()), {
+                        anchoColumna: iAnchoColumna || oColumnDom.offsetWidth,
+                        anchoColumnaOrigen: iAnchoColumna ? "columnResize" : "offsetWidth",
+                        paddingHorizontal: iPaddingHorizontal,
+                        iAnchoTexto: iAnchoTexto,
+                        anchoTextoCeldaReal: oTextoCeldaTemporal ? oTextoCeldaTemporal.clientWidth : null,
+                        iAltoLinea: iAltoLinea,
+                        iLineasMedidas: iLineas,
+                        iLineasFinal: Math.min(iLineas, MAX_LINEAS),
+                        cantidadTextos: aTextos.length,
+                        estiloMedidor: sEstiloMedidorTemporal,
+                        estiloCelda: fnEstiloTemporal(oTextoCeldaTemporal),
+                        // fuente72Cargada: document.fonts ? document.fonts.check("14px 72") : "n/d",
+                        // La familia va entre comillas: "14px 72" no es un font shorthand válido (72 se lee como número)
+                        fuente72Cargada: document.fonts ? document.fonts.check('14px "72"') : "n/d",
+                        maximo: aTopTemporal[0],
+                        top5: aTopTemporal
+                    });
+                } catch (oErrorTemporal) {
+                    console.warn("[AltoFilas] error en el log temporal (no afecta el ajuste del alto)", oErrorTemporal);
+                }
+                // ===== FIN TEMPORAL =====
+            } finally {
+                // oMedidor.remove();
+                oMedidor.remove();
+            }
 
             iLineas = Math.min(iLineas, MAX_LINEAS);
 
             // El alto se define en el modo de filas de la tabla (alto del contenido, sin márgenes).
             // Con una sola línea se vuelve al alto estándar.
             oRowMode.setRowContentHeight(iLineas > 1 ? iLineas * iAltoLinea : null);
+
+            // Recién con el alto aplicado se da la medición por buena
+            this._mClaveAltoFilas[oTable.getId()] = sClave;
         },
         // FIN MOD TRNS #SistemaDeTurno-1
         onSelectTurno: function (oEvent) {
