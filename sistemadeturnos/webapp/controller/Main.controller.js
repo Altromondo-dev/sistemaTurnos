@@ -66,12 +66,22 @@ sap.ui.define([
             const oTreeModel = new JSONModel([]);
             this.getView().setModel(oTreeModel, "listCronoTreeModel");
 
+            // INI MOD TRNS #SistemaDeTurno-Permisos
+            // isEditor: solo Programación COT/COTDT ven la botonera del footer (los visualizadores solo ven la versión)
+            // var oViewModel = new JSONModel({
+            //     busy: false,
+            //     delay: 0,
+            //     isProgramacion: false,
+            //     canViewResumen: false
+            // });
             var oViewModel = new JSONModel({
                 busy: false,
                 delay: 0,
+                isEditor: false,
                 isProgramacion: false,
                 canViewResumen: false
             });
+            // FIN MOD TRNS #SistemaDeTurno-Permisos
             this.getView().setModel(oViewModel, "viewModel");
 
             const oReporteModel = new JSONModel([]);
@@ -273,6 +283,10 @@ sap.ui.define([
             // - canViewResumen: tabs Resumen y Gráfico → Editor, Full viewer y Basic viewer
             var oViewModel = this.getView().getModel("viewModel");
             if (oViewModel) {
+                // INI MOD TRNS #SistemaDeTurno-Permisos
+                // - isEditor: botonera del footer → solo Editor (los visualizadores solo ven la versión)
+                oViewModel.setProperty("/isEditor", bEsEditor);
+                // FIN MOD TRNS #SistemaDeTurno-Permisos
                 oViewModel.setProperty("/isProgramacion", bCanViewFullDetail);
                 oViewModel.setProperty("/canViewResumen", bCanViewResumen);
             }

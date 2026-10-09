@@ -931,7 +931,11 @@
 
                 <footer>
                     <OverflowToolbar>
-                        <MenuButton text="{i18n>reports}" menuPosition="BeginTop" visible="{viewModel>/isProgramacion}">
+                        <!-- INI MOD TRNS #SistemaDeTurno-Permisos -->
+                        <!-- Botonera del footer solo para Programación COT/COTDT; los visualizadores solo ven la versión -->
+                        <!-- <MenuButton text="{i18n>reports}" menuPosition="BeginTop" visible="{viewModel>/isProgramacion}"> -->
+                        <MenuButton text="{i18n>reports}" menuPosition="BeginTop" visible="{viewModel>/isEditor}">
+                        <!-- FIN MOD TRNS #SistemaDeTurno-Permisos -->
                             <menu>
                                 <Menu>
                                     <MenuItem text="Reporte Amplio" press="onReportsPress">
@@ -947,15 +951,24 @@
                                 </Menu>
                             </menu>
                         </MenuButton>
-                        <Button icon="sap-icon://add" press="onAddLicense" text="{i18n>altaTurno}" class="sapUiSmallMarginEnd" enabled="{editableModel>/isEditable}" />
+                        <!-- INI MOD TRNS #SistemaDeTurno-Permisos -->
+                        <!-- <Button icon="sap-icon://add" press="onAddLicense" text="{i18n>altaTurno}" class="sapUiSmallMarginEnd" enabled="{editableModel>/isEditable}" /> -->
+                        <Button icon="sap-icon://add" press="onAddLicense" text="{i18n>altaTurno}" class="sapUiSmallMarginEnd" enabled="{editableModel>/isEditable}" visible="{viewModel>/isEditor}" />
+                        <!-- FIN MOD TRNS #SistemaDeTurno-Permisos -->
                         <ToolbarSpacer />
                         <Text text="V{appVersion>/version}" class="textWhite" />
                         <ToolbarSpacer />
                         <!-- Solo visible en la solapa "Acciones para la entrega" -->
-                        <Button icon="sap-icon://save" text="{i18n>saveAcciones}" press="onGuardarAccionesBackend" tooltip="Guardar todas las acciones en el backend" enabled="{editableModel>/isEditable}" visible="{= ${tabsControl>/activeTab} === 'ACCIONES' }" />
+                        <!-- INI MOD TRNS #SistemaDeTurno-Permisos -->
+                        <!-- <Button icon="sap-icon://save" text="{i18n>saveAcciones}" press="onGuardarAccionesBackend" tooltip="Guardar todas las acciones en el backend" enabled="{editableModel>/isEditable}" visible="{= ${tabsControl>/activeTab} === 'ACCIONES' }" />
                         <Button icon="sap-icon://save" text="{i18n>saveTurno}" press="onSaveTurnoPress" enabled="{editableModel>/isEditable}" />
                         <Button icon="sap-icon://create-form" text="{i18n>createTurno}" press="onSearch" enabled="{editableModel>/isEditable}" />
-                        <Button icon="sap-icon://email" text="{i18n>sendEmail}" press="onSendEmailPress" enabled="{editableModel>/isEditable}" />
+                        <Button icon="sap-icon://email" text="{i18n>sendEmail}" press="onSendEmailPress" enabled="{editableModel>/isEditable}" /> -->
+                        <Button icon="sap-icon://save" text="{i18n>saveAcciones}" press="onGuardarAccionesBackend" tooltip="Guardar todas las acciones en el backend" enabled="{editableModel>/isEditable}" visible="{= ${viewModel>/isEditor} &amp;&amp; ${tabsControl>/activeTab} === 'ACCIONES' }" />
+                        <Button icon="sap-icon://save" text="{i18n>saveTurno}" press="onSaveTurnoPress" enabled="{editableModel>/isEditable}" visible="{viewModel>/isEditor}" />
+                        <Button icon="sap-icon://create-form" text="{i18n>createTurno}" press="onSearch" enabled="{editableModel>/isEditable}" visible="{viewModel>/isEditor}" />
+                        <Button icon="sap-icon://email" text="{i18n>sendEmail}" press="onSendEmailPress" enabled="{editableModel>/isEditable}" visible="{viewModel>/isEditor}" />
+                        <!-- FIN MOD TRNS #SistemaDeTurno-Permisos -->
                     </OverflowToolbar>
                 </footer>
             </Page>
