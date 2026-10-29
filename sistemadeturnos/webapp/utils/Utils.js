@@ -90,6 +90,41 @@ sap.ui.define([
         return { category, duration, condition };
     }
 
+    // INI MOD TRNS #SistemaDeTurno-14
+    // Hora de inicio de la licencia, en minutos desde la medianoche (o null si no se puede
+    // determinar). Único lugar donde se calcula: antes estaba duplicado en dos bloques del
+    // controller (_doSearchTurnos y la carga de turno existente) y era inaccesible desde
+    // TurnosService, que lo necesita para RN-01 (el turno nunca antes de la hora de inicio).
+    function getInitHourSort(license) {
+        if (!license) return null;
+
+        const vTimbeg = license.Timbeg;
+
+        if (vTimbeg && typeof vTimbeg === "object" && "ms" in vTimbeg) {
+            return Math.floor(vTimbeg.ms / (1000 * 60));
+        }
+
+        if (typeof vTimbeg === "string" && vTimbeg !== "" && vTimbeg !== "PT00H00M00S") {
+            const hoursMatch = vTimbeg.match(/(\d+)H/);
+            const minutesMatch = vTimbeg.match(/(\d+)M/);
+            const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
+            const minutes = minutesMatch ? parseInt(minutesMatch[1], 10) : 0;
+            return hours * 60 + minutes;
+        }
+
+        if (license.Gdate) {
+            const d = new Date(license.Gdate);
+            // El bloque original no validaba la fecha y podía dejar NaN en InitHourSort,
+            // que envenenaba cualquier Math.max posterior.
+            if (!isNaN(d.getTime())) {
+                return d.getHours() * 60 + d.getMinutes();
+            }
+        }
+
+        return null;
+    }
+    // FIN MOD TRNS #SistemaDeTurno-14
+
     // INI MOD TRNS #SistemaDeTurno-11
     // Fecha de turno → "dd/MM/yyyy". Mismo criterio que TurnosService._claveFechaTurno
     // (no se reutiliza porque TurnosService depende de Utils): las fechas OData (Edm.DateTime)
@@ -111,6 +146,10 @@ sap.ui.define([
 
         // Exportamos para que TurnosService lo use en assignShiftsToLicences
         getShiftInfo: getShiftInfo,
+
+        // INI MOD TRNS #SistemaDeTurno-14
+        getInitHourSort: getInitHourSort,
+        // FIN MOD TRNS #SistemaDeTurno-14
 
         onCountItems: function (oView, data) {
 

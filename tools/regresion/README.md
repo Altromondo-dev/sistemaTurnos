@@ -27,15 +27,13 @@ devuelve `obj`, con lo que quedan accesibles los métodos del controller.
 Es decir: **no hay copias de la lógica de negocio en el test**. Se ejercita el
 código de producción:
 
-- `services/TurnosService.js` → `assignShiftsToLicences`, `ordenarPorEqunr`,
+- `services/TurnosService.js` → `assignShiftsToLicences`, `recalcularDesde`
+  (el motor único de horarios), `_agruparPorConsola`, `ordenarPorEqunr`,
   `_formatTime`, `_convertTimeToMinutes`
-- `controller/Main.controller.js` → `_sortLicencesNuevoTurno`, `_sortLicences`,
-  `_rebuildFrontendGroupsByEquipo`
-- `utils/Utils.js` → `getShiftInfo` (categoría y duración por licencia)
-
-La única excepción es `assignShiftsOld()` dentro de `regresion.js`: una copia del
-algoritmo **anterior** (`previousGrupo`), que existe solo para contrastar el
-"antes" contra el "ahora" en la salida.
+- `controller/Main.controller.js` → `_recalcularDesde`, `_recalculateEmptyShift`,
+  `_sortLicencesNuevoTurno`, `_sortLicences`, `_rebuildFrontendGroupsByEquipo`
+- `utils/Utils.js` → `getShiftInfo` (categoría y duración), `getInitHourSort`
+  (hora de inicio en minutos)
 
 `regresion.js` reproduce los tres flujos de la app tal como los encadenan los
 controllers:
@@ -46,45 +44,79 @@ controllers:
 | Pantalla, turno **existente** | `ordenarPorEqunr` → `assignShiftsToLicences` → `_rebuildFrontendGroupsByEquipo` → `_sortLicences` |
 | **Reportes** (amplio y maniobras) | `ordenarPorEqunr` → `assignShiftsToLicences` |
 
+## Reglas que se verifican
+
+- **RN-01** — el turno de cada licencia nunca queda antes de su hora de inicio.
+  En un bloque acoplado, el turno es el mayor entre el cursor y la hora de inicio
+  **más tardía** del bloque.
+- **Separación** — después de un bloque se avanza la **mayor** duración de sus
+  licencias, no la de `items[0]`.
+- **RN-07** — se alerta solo ante conflicto real (solape con el bloque anterior, o
+  turno anterior a la hora de inicio). Los huecos no alertan, y la alerta nunca
+  bloquea ni corrige el valor.
+- **Empujar sí, adelantar no** — un bloque posterior al editado toma
+  `max(cursor, inicioBloque, valorActual)`: se empuja si quedó solapado, se respeta
+  si ya estaba más tarde, y nunca se adelanta (adelantar en cascada es P-04, 14a-2).
+- **Acople** (`#SistemaDeTurno-12-13`) — una sola hora por bloque y filas contiguas.
+
 ## Qué cubre cada escenario
 
-1. **Caso QAS 29.10.2026** — `1AC-DEH1` con dos licencias (inicio 08:00 y 10:00)
-   separadas por `1AC-BVI1` (inicio 10:00) al ordenar por hora de inicio. Es el
-   caso de `#SistemaDeTurno-12-13`: verifica que las dos de `1AC-DEH1` queden en
-   07:00, contiguas y en el mismo grupo `grp_1AC-DEH1`, y `1AC-BVI1` en 07:10.
-   Imprime también el resultado del algoritmo anterior para contrastar.
-2. **Grupo de 3 intercalado** — tres licencias del mismo equipo separadas por otros
-   dos equipos: las tres comparten hora y quedan contiguas; los equipos siguientes
-   avanzan 07:10 y 07:20.
-3. **Desacoplados** — licencias con `Grupo` que empieza con `_`: cada una conserva
-   su hora propia y no se acoplan aunque compartan `Equnr`.
-4. **Turno ya guardado en backend** — con un registro en `TurnosLicencias_nav` para
-   la fecha del turno, se respeta la hora grabada (11:45) y no se recalcula; otra
-   licencia del mismo equipo sin registro sí se calcula.
-5. **Varias consolas** — el cursor de horas es independiente por consola: ambas
-   arrancan en 07:00 y no se contaminan entre sí.
-6. **Pantalla vs reportes, mismo día** —
-   - *6a*: día sin turno grabado → pantalla-turno-existente y reporte dan las
-     mismas horas (misma cadena de ordenamiento).
-   - *6b*: día con turno grabado → las tres vistas coinciden, porque todas leen
-     `TurnosLicencias_nav`. Es el caso normal de un reporte.
-   - *6c*: informativo. Para un día **sin** turno grabado, pantalla-turno-**nuevo**
-     puede diferir del reporte: la pantalla ordena por hora de inicio y el reporte
-     por `Equnr`, así que el cursor recorre los grupos en otro orden. Es una
-     divergencia **preexistente**, no la introdujo `#SistemaDeTurno-12-13`; el
-     check verifica que el cambio no la agrave.
-7. **Invariantes sobre set grande** — 30 licencias, 5 equipos, 2 consolas: todo
-   grupo tiene una sola hora, todo grupo queda contiguo, las horas no decrecen
-   dentro de cada consola, las consolas quedan agrupadas y alfabéticas, y no se
-   pierden ni duplican licencias.
+0. **Duraciones de referencia** — fija que `getShiftInfo` devuelve 10 / 30 / 45
+   minutos para las tres categorías que usan los escenarios. Si cambia la regla de
+   negocio, este check falla primero y explica el resto de las fallas.
+1. **Caso QAS 29.10.2026** — `1AC-DEH1` con inicios 08:00 / 10:00 / 10:00 / 12:00 y
+   `1AC-BVI1` con inicio 10:00. Verifica `1AC-BVI1` → 10:00 y el bloque `1AC-DEH1`
+   → 12:00, contiguo y en `grp_1AC-DEH1`.
+2. **Caso QAS original de 3 licencias** — las dos de `1AC-DEH1` en 10:00 y
+   contiguas, `1AC-BVI1` empujada a 10:10. Cubre el acople de `#12-13` ya con RN-01.
+3. **RN-01** — el ejemplo del diseño: L-A 07:00 (30'), L-B 08:00 (10'), L-C 13:00
+   (45') → 07:00 / 08:00 / 13:00. Sin RN-01 daban 07:00 / 07:30 / 07:40.
+4. **Bloque mixto** — L-B (10') y L-C (45') en el mismo equipo. El bloque arranca
+   13:00 (inicio más tardío) y el bloque siguiente queda en 13:45: con la regla
+   vieja (`items[0]`) habría quedado en 13:10, solapado.
+5. **Alertas solo ante conflicto** — cuatro variantes sobre el motor directo:
+   hueco (sin alerta), solape, turno anterior a la hora de inicio, y ambos a la vez.
+   En todas se comprueba además que el valor del usuario **no** se corrige.
+6. **Empujar sí, adelantar no** — el bloque editado se mueve a 10:00: el siguiente
+   se empuja de 07:30 a 10:30, y uno que estaba en 16:00 se queda en 16:00 sin
+   alertar. Incluye un posterior que se sube a su propia hora de inicio.
+7. **Cascada desde el controller** — ejercita `_recalcularDesde` (marca
+   `TurnoWarning` ante conflicto, no corrige el ancla) y `_recalculateEmptyShift`
+   (el grupo vaciado toma `max(cursor, hora de inicio)`).
+8. **Desacoplados** — licencias con `Grupo` que empieza con `_`: hora propia cada
+   una, respetando RN-01.
+9. **Turno ya guardado en backend** — con registro en `TurnosLicencias_nav` para la
+   fecha, se respeta la hora grabada y no se recalcula; las demás sí.
+10. **Varias consolas** — cursor independiente por consola.
+11. **Pantalla vs reportes, mismo día** — pantalla-nuevo, pantalla-turno-existente
+    y reporte dan las **mismas** horas, con y sin turno grabado, y los reportes
+    aplican RN-01. Antes de `#SistemaDeTurno-14` pantalla-nuevo podía diferir del
+    reporte porque cada uno recorría los grupos en otro orden; ahora la asignación
+    inicial ordena los bloques por hora de inicio y el resultado no depende del
+    orden de entrada.
+12. **Invariantes sobre set grande** — 30 licencias, 5 equipos, 3 categorías,
+    2 consolas: una sola hora por bloque, bloques contiguos, RN-01 en todas, horas
+    no decrecientes por consola, consolas agrupadas y alfabéticas, sin pérdidas ni
+    duplicados, y separación nunca menor que la mayor duración del bloque anterior.
 
 ## Datos de prueba
 
-El helper `lic(Id, Equnr, Consola, InitHourSort, extra)` arma licencias con
-`Jobcond: "06"` sin PAT ni interruptores/seccionadores, que `getShiftInfo`
-clasifica como `SinManiobras` con duración de 10 minutos — de ahí los saltos de
-07:00 → 07:10 → 07:20. `extra` permite pisar cualquier campo (`Grupo`,
-`Desacoplado`, `TurnosLicencias_nav`, etc.).
+El helper `lic(Id, Equnr, Consola, InitHourSort, categoria, extra)` arma licencias
+con una de tres categorías, elegidas para que las duraciones sean distinguibles:
+
+| `categoria` | Campos | `getShiftInfo` | Duración |
+|---|---|---|---|
+| `sin10` (default) | `Jobcond: "06"` sin PAT ni maniobras | `SinManiobras` | 10' |
+| `equipo30` | `Jobcond: "01"`, `Tipoequipo: "TR"` | `ConsignacionEquipo` | 30' |
+| `linea45` | `Jobcond: "01"`, `Tipoequipo: "L2"` | `ConsignacionLinea` | 45' |
+
+`extra` permite pisar cualquier campo (`Grupo`, `TurnoAsignado`, `Desacoplado`,
+`TurnosLicencias_nav`, etc.).
+
+`Grupo` arranca en `Equnr`, igual que hace `assignShiftsToLicences` cuando la
+licencia no trae grupo del backend. Es necesario: sin él,
+`_updateSameGroupAndConsoleShifts` compara `undefined === undefined` y trata a
+todas las licencias como un mismo grupo.
 
 `Dateturno` usa objetos `Date` reales, como los entrega el modelo OData de UI5:
 `_claveFechaTurno` no parsea el literal `/Date(...)/` de OData v2 en crudo.

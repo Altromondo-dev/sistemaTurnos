@@ -2802,22 +2802,27 @@ sap.ui.define([
                     });
 
                     // Calcular InitHourSort para poder ordenar por hora de inicio
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    // data.forEach(item => {
+                    //     if (item.Timbeg && typeof item.Timbeg === 'object' && 'ms' in item.Timbeg) {
+                    //         item.InitHourSort = Math.floor(item.Timbeg.ms / (1000 * 60));
+                    //     } else if (item.Timbeg && typeof item.Timbeg === 'string' && item.Timbeg !== "PT00H00M00S") {
+                    //         const hoursMatch = item.Timbeg.match(/(\d+)H/);
+                    //         const minutesMatch = item.Timbeg.match(/(\d+)M/);
+                    //         const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
+                    //         const minutes = minutesMatch ? parseInt(minutesMatch[1], 10) : 0;
+                    //         item.InitHourSort = hours * 60 + minutes;
+                    //     } else if (item.Gdate) {
+                    //         const d = new Date(item.Gdate);
+                    //         item.InitHourSort = d.getHours() * 60 + d.getMinutes();
+                    //     } else {
+                    //         item.InitHourSort = null;
+                    //     }
+                    // });
                     data.forEach(item => {
-                        if (item.Timbeg && typeof item.Timbeg === 'object' && 'ms' in item.Timbeg) {
-                            item.InitHourSort = Math.floor(item.Timbeg.ms / (1000 * 60));
-                        } else if (item.Timbeg && typeof item.Timbeg === 'string' && item.Timbeg !== "PT00H00M00S") {
-                            const hoursMatch = item.Timbeg.match(/(\d+)H/);
-                            const minutesMatch = item.Timbeg.match(/(\d+)M/);
-                            const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
-                            const minutes = minutesMatch ? parseInt(minutesMatch[1], 10) : 0;
-                            item.InitHourSort = hours * 60 + minutes;
-                        } else if (item.Gdate) {
-                            const d = new Date(item.Gdate);
-                            item.InitHourSort = d.getHours() * 60 + d.getMinutes();
-                        } else {
-                            item.InitHourSort = null;
-                        }
+                        item.InitHourSort = Utils.getInitHourSort(item);
                     });
+                    // FIN MOD TRNS #SistemaDeTurno-14
 
                     // Ordenar por consola → hora de inicio → prioridad de maniobras
                     this._sortLicencesNuevoTurno(data);
@@ -3196,27 +3201,32 @@ sap.ui.define([
                         }
                     });
 
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    // results.forEach(item => {
+                    //     if (item.Timbeg && typeof item.Timbeg === 'object' && 'ms' in item.Timbeg) {
+                    //         const totalMinutes = Math.floor(item.Timbeg.ms / (1000 * 60));
+                    //         item.InitHourSort = totalMinutes;
+                    //     }
+                    //     else if (item.Timbeg && typeof item.Timbeg === 'string' && item.Timbeg !== "PT00H00M00S") {
+                    //         const hoursMatch = item.Timbeg.match(/(\d+)H/);
+                    //         const minutesMatch = item.Timbeg.match(/(\d+)M/);
+                    //
+                    //         const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
+                    //         const minutes = minutesMatch ? parseInt(minutesMatch[1], 10) : 0;
+                    //
+                    //         item.InitHourSort = hours * 60 + minutes;
+                    //     }
+                    //     else if (item.Gdate) {
+                    //         const d = new Date(item.Gdate);
+                    //         item.InitHourSort = d.getHours() * 60 + d.getMinutes();
+                    //     } else {
+                    //         item.InitHourSort = null;
+                    //     }
+                    // });
                     results.forEach(item => {
-                        if (item.Timbeg && typeof item.Timbeg === 'object' && 'ms' in item.Timbeg) {
-                            const totalMinutes = Math.floor(item.Timbeg.ms / (1000 * 60));
-                            item.InitHourSort = totalMinutes;
-                        }
-                        else if (item.Timbeg && typeof item.Timbeg === 'string' && item.Timbeg !== "PT00H00M00S") {
-                            const hoursMatch = item.Timbeg.match(/(\d+)H/);
-                            const minutesMatch = item.Timbeg.match(/(\d+)M/);
-
-                            const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
-                            const minutes = minutesMatch ? parseInt(minutesMatch[1], 10) : 0;
-
-                            item.InitHourSort = hours * 60 + minutes;
-                        }
-                        else if (item.Gdate) {
-                            const d = new Date(item.Gdate);
-                            item.InitHourSort = d.getHours() * 60 + d.getMinutes();
-                        } else {
-                            item.InitHourSort = null;
-                        }
+                        item.InitHourSort = Utils.getInitHourSort(item);
                     });
+                    // FIN MOD TRNS #SistemaDeTurno-14
 
                     const arrayOrdenado = TurnosService.encontrarGrupo(
                         TurnosService.ordenarPorEqunr(results),
@@ -3527,7 +3537,10 @@ sap.ui.define([
                 return lic === oSelectedLicence;
             });
 
-            var aWarningItems = this._cascadeGroupsDown(aLicences, iNewIndex, oSource);
+            // INI MOD TRNS #SistemaDeTurno-14
+            // var aWarningItems = this._cascadeGroupsDown(aLicences, iNewIndex, oSource);
+            var aWarningItems = this._recalcularDesde(aLicences, iNewIndex, oSource);
+            // FIN MOD TRNS #SistemaDeTurno-14
 
             // INI MOD TRNS #SistemaDeTurno-12-13
             // this._rebuildFrontendGroupsByEquipoHora(aLicences);
@@ -3550,7 +3563,124 @@ sap.ui.define([
             }
         },
 
+        // INI MOD TRNS #SistemaDeTurno-14
+        // Cascada unificada: la usan onChangeHour (edición) y _recalculateEmptyShift
+        // (campo vaciado). La regla, RN-01 y el criterio de alertas viven en
+        // TurnosService.recalcularDesde, el mismo motor que usa la asignación inicial.
+        //
+        // Devuelve las licencias que quedaron marcadas con TurnoWarning, para que el
+        // caller las limpie después de mostrarlas una sola vez.
+        _recalcularDesde: function (aLicences, iStartIndex, oTimeControl) {
+            var ValueState = CoreLibrary.ValueState;
+
+            if (iStartIndex < 0 || iStartIndex >= aLicences.length) {
+                return [];
+            }
+
+            var oBase = aLicences[iStartIndex];
+            var sConsola = oBase.Consola || "";
+
+            if (!sConsola) {
+                return [];
+            }
+
+            var sGrupoEditado = oBase.Grupo || oBase.Equnr || "";
+
+            var aGrupos = TurnosService._agruparPorConsola(aLicences, sConsola, "visual", null);
+            var iDesdeGrupo = aGrupos.findIndex(function (g) {
+                return g.items.indexOf(oBase) !== -1;
+            });
+
+            if (iDesdeGrupo === -1) {
+                return [];
+            }
+
+            // Limpiar warnings previos de toda la consola
+            aLicences.forEach(function (lic) {
+                if ((lic.Consola || "") === sConsola) {
+                    lic.TurnoWarning = "";
+                }
+            });
+
+            var oResultado = TurnosService.recalcularDesde(aLicences, {
+                consola: sConsola,
+                desdeGrupo: iDesdeGrupo,
+                orden: "visual",
+                anclas: [sGrupoEditado],
+                respetarValorActual: true
+            });
+
+            // RN-07: solo se alerta por conflicto real, y la alerta no bloquea ni corrige.
+            var aAlertas = oResultado.alertas || [];
+            var bSolape = aAlertas.some(function (a) { return a.tipo === "solape"; });
+            var bAntesDeInicio = aAlertas.some(function (a) { return a.tipo === "antesDeInicio"; });
+
+            var aMensajes = [];
+            if (bSolape) {
+                aMensajes.push("El turno comienza antes de la separación mínima con el grupo anterior.");
+            }
+            if (bAntesDeInicio) {
+                aMensajes.push("El turno comienza antes de la hora de inicio de la licencia.");
+            }
+
+            var aWarningItems = [];
+
+            if (aMensajes.length > 0) {
+                var sMensaje = aMensajes.join(" ");
+
+                MessageHelper.show(sMensaje);
+
+                aGrupos[iDesdeGrupo].items.forEach(function (it) {
+                    it.TurnoWarning = sMensaje;
+                    aWarningItems.push(it);
+                });
+
+                if (oTimeControl) {
+                    oTimeControl.setValueState(ValueState.Error);
+                    oTimeControl.setValueStateText(sMensaje);
+                }
+            } else if (oTimeControl) {
+                oTimeControl.setValueState(ValueState.None);
+                oTimeControl.setValueStateText("");
+            }
+
+            return aWarningItems;
+        },
+        // FIN MOD TRNS #SistemaDeTurno-14
+
         _recalculateEmptyShift: function (aLicences, oSelectedLicence, iLicenseIndex) {
+            const consola = oSelectedLicence.Consola;
+
+            if (!consola) {
+                return;
+            }
+
+            // 1) Actualizar el grupo actual a vacío
+            this._updateSameGroupAndConsoleShifts(aLicences, oSelectedLicence, "");
+
+            // INI MOD TRNS #SistemaDeTurno-14
+            // 2) El grupo vaciado y los siguientes los recalcula el motor único.
+            //    Sin anclas: el grupo vaciado toma max(cursor, hora de inicio).
+            const aGrupos = TurnosService._agruparPorConsola(aLicences, consola, "visual", null);
+            const iDesdeGrupo = aGrupos.findIndex(g => g.items.indexOf(oSelectedLicence) !== -1);
+
+            if (iDesdeGrupo !== -1) {
+                TurnosService.recalcularDesde(aLicences, {
+                    consola: consola,
+                    desdeGrupo: iDesdeGrupo,
+                    orden: "visual",
+                    anclas: [],
+                    respetarValorActual: true
+                });
+            }
+
+            this._rebuildFrontendGroupsByEquipo(aLicences);
+            this._assignGroupColors(aLicences);
+            this._sortLicences(aLicences);
+        },
+
+        /* Reemplazado por el motor único (TurnosService.recalcularDesde):
+        _recalculateEmptyShiftOLD: function (aLicences, oSelectedLicence, iLicenseIndex) {
             const consola = oSelectedLicence.Consola;
 
             if (!consola) {
@@ -3685,6 +3815,7 @@ sap.ui.define([
                 prevStart = expectedStart;
             }
         },
+        FIN del bloque reemplazado por #SistemaDeTurno-14 */
 
         _updateSameGroupAndConsoleShifts: function (aLicences, oSelectedLicence, sNewTime) {
             // Recorre las licencias y actualiza el horario solo de aquellas que comparten el mismo Grupo y Consola
@@ -5492,6 +5623,11 @@ sap.ui.define([
 
 
         // ---------------------------------------------------------------
+        /* INI MOD TRNS #SistemaDeTurno-14
+           Reemplazada por _recalcularDesde + TurnosService.recalcularDesde.
+           Usaba la duración de items[0] como separación, no miraba la hora de inicio
+           y alertaba por hueco (expectedStart < currentStart), que RN-07 prohíbe.
+
         _cascadeGroupsDown: function (aLicences, startIndex, oTimeControl) {
 
             var ValueState = CoreLibrary.ValueState;
@@ -5646,6 +5782,7 @@ sap.ui.define([
             });
             return aWarningItems;
         },
+        FIN MOD TRNS #SistemaDeTurno-14 */
 
         // ==================== MÉTODOS PARA ADJUNTAR ARCHIVOS PDF ====================
 

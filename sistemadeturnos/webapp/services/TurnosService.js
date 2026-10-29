@@ -62,7 +62,14 @@ sap.ui.define([
                                 this.ordenarPorEqunr(datosFiltrados),
                                 oView
                             );
-                            this.assignShiftsToLicences(resultadoFinal, oView);
+                            // INI MOD TRNS #SistemaDeTurno-14
+                            // Asignación eliminada: corría sobre el orden de ordenarPorEqunr y
+                            // antes de que existiera InitHourSort, y _doSearchTurnos volvía a
+                            // asignar enseguida. Con RN-01 esta primera pasada además sería
+                            // incorrecta. Los demás llamadores de search() no usan TurnoAsignado
+                            // (appendLicencesToModel lo borra al insertar).
+                            // this.assignShiftsToLicences(resultadoFinal, oView);
+                            // FIN MOD TRNS #SistemaDeTurno-14
                         }
 
                         resolve(resultadoFinal);
@@ -204,6 +211,16 @@ sap.ui.define([
                 }
             });
 
+            // INI MOD TRNS #SistemaDeTurno-14
+            // Asegurar la hora de inicio: los flujos de reporte nunca la calculaban,
+            // y sin ella no se puede aplicar RN-01.
+            licences.forEach((license) => {
+                if (license.InitHourSort == null) {
+                    license.InitHourSort = Utils.getInitHourSort(license);
+                }
+            });
+            // FIN MOD TRNS #SistemaDeTurno-14
+
             // Agrupar por Consola
             const groupedByConsola = {};
             licences.forEach((license) => {
@@ -215,7 +232,16 @@ sap.ui.define([
             });
 
             Object.keys(groupedByConsola).forEach((consola) => {
-                let currentTime = initialTime;
+                // INI MOD TRNS #SistemaDeTurno-14
+                // El cursor lo lleva ahora recalcularDesde.
+                // let currentTime = initialTime;
+
+                // Las licencias con turno guardado para esta fecha no se recalculan:
+                // se marcan como fijas y recalcularDesde las trata como bloque propio
+                // que solo alimenta el cursor.
+                const oFijos = new Set();
+                // FIN MOD TRNS #SistemaDeTurno-14
+
                 // INI MOD TRNS #SistemaDeTurno-12-13
                 // let previousGrupo = "";
                 // let firstShiftInGroup = "";
@@ -223,7 +249,10 @@ sap.ui.define([
                 // Hora ya fijada por cada grupo de esta consola.
                 // Permite que licencias del mismo grupo compartan turno aunque no
                 // estén contiguas en el array (p.ej. ordenadas por hora de inicio).
-                const mTurnoPorGrupo = {};
+                // INI MOD TRNS #SistemaDeTurno-14
+                // Absorbido por recalcularDesde: "una hora por bloque" es ahora la regla general.
+                // const mTurnoPorGrupo = {};
+                // FIN MOD TRNS #SistemaDeTurno-14
                 // FIN MOD TRNS #SistemaDeTurno-12-13
 
                 groupedByConsola[consola].forEach((license) => {
@@ -269,48 +298,70 @@ sap.ui.define([
                             license.Agrmanual = nav.Agrmanual || false;
                             license.Desacoplado = nav.Desacoplado === true;
 
+                            // INI MOD TRNS #SistemaDeTurno-14
+                            // return;
+                            oFijos.add(license.Id);
+                            // FIN MOD TRNS #SistemaDeTurno-14
                             return;
                         }
                         // Sin registro para esta fecha: se calcula como licencia nueva (pasos 2-4)
                         // FIN MOD TRNS #SistemaDeTurno-12-13
                     }
 
-                    // 2) Obtener duración
-                    const shiftInfo = Utils.getShiftInfo(license);
-                    const shiftDuration = shiftInfo.duration;
-
-                    // 3) Desacoplados
-                    if (license.Grupo && license.Grupo.startsWith("_")) {
-                        license.TurnoAsignado = this._formatTime(currentTime);
-                        currentTime += shiftDuration;
-                        return;
-                    }
-
-                    // 4) Grupos normales
-                    // INI MOD TRNS #SistemaDeTurno-12-13
-                    // if (license.Grupo !== previousGrupo) {
-                    //     previousGrupo = license.Grupo;
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    // Los pasos 2 a 4 (duración, desacoplados y grupos normales) los resuelve
+                    // ahora recalcularDesde, con la misma regla que usa la cascada al editar.
                     //
-                    //     firstShiftInGroup = this._formatTime(currentTime);
-                    //     license.TurnoAsignado = firstShiftInGroup;
+                    // // 2) Obtener duración
+                    // const shiftInfo = Utils.getShiftInfo(license);
+                    // const shiftDuration = shiftInfo.duration;
+                    //
+                    // // 3) Desacoplados
+                    // if (license.Grupo && license.Grupo.startsWith("_")) {
+                    //     license.TurnoAsignado = this._formatTime(currentTime);
+                    //     currentTime += shiftDuration;
+                    //     return;
+                    // }
+                    //
+                    // // 4) Grupos normales
+                    // // INI MOD TRNS #SistemaDeTurno-12-13
+                    // // if (license.Grupo !== previousGrupo) {
+                    // //     previousGrupo = license.Grupo;
+                    // //
+                    // //     firstShiftInGroup = this._formatTime(currentTime);
+                    // //     license.TurnoAsignado = firstShiftInGroup;
+                    // //
+                    // //     currentTime += shiftDuration;
+                    // // } else {
+                    // //     license.TurnoAsignado = firstShiftInGroup;
+                    // // }
+                    //
+                    // // La primera licencia del grupo fija la hora y avanza el cursor;
+                    // // las siguientes del mismo grupo copian esa hora aunque no sean contiguas.
+                    // if (mTurnoPorGrupo[license.Grupo] === undefined) {
+                    //     mTurnoPorGrupo[license.Grupo] = this._formatTime(currentTime);
+                    //     license.TurnoAsignado = mTurnoPorGrupo[license.Grupo];
                     //
                     //     currentTime += shiftDuration;
                     // } else {
-                    //     license.TurnoAsignado = firstShiftInGroup;
+                    //     license.TurnoAsignado = mTurnoPorGrupo[license.Grupo];
                     // }
-
-                    // La primera licencia del grupo fija la hora y avanza el cursor;
-                    // las siguientes del mismo grupo copian esa hora aunque no sean contiguas.
-                    if (mTurnoPorGrupo[license.Grupo] === undefined) {
-                        mTurnoPorGrupo[license.Grupo] = this._formatTime(currentTime);
-                        license.TurnoAsignado = mTurnoPorGrupo[license.Grupo];
-
-                        currentTime += shiftDuration;
-                    } else {
-                        license.TurnoAsignado = mTurnoPorGrupo[license.Grupo];
-                    }
-                    // FIN MOD TRNS #SistemaDeTurno-12-13
+                    // // FIN MOD TRNS #SistemaDeTurno-12-13
+                    // FIN MOD TRNS #SistemaDeTurno-14
                 });
+
+                // INI MOD TRNS #SistemaDeTurno-14
+                // Asignación inicial: se recorren TODOS los bloques, ordenados por hora de
+                // inicio del bloque (no por su posición en el array), aplicando RN-01.
+                this.recalcularDesde(groupedByConsola[consola], {
+                    consola: consola,
+                    desdeGrupo: 0,
+                    inicial: initialTime,
+                    orden: "inicio",
+                    fijos: oFijos,
+                    respetarValorActual: false
+                });
+                // FIN MOD TRNS #SistemaDeTurno-14
 
                 // Ordenar por turno asignado
                 groupedByConsola[consola].sort((a, b) =>
@@ -327,6 +378,208 @@ sap.ui.define([
         }
         ,
 
+
+        // INI MOD TRNS #SistemaDeTurno-14
+        // ---------------- MOTOR ÚNICO DE HORARIOS ----------------
+        //
+        // Reemplaza las tres cascadas que existían con reglas distintas
+        // (assignShiftsToLicences, _cascadeGroupsDown y
+        // _recalculateEmptyShift/_recalculateFollowingGroups).
+        //
+        // Regla, recorriendo los bloques de UNA consola:
+        //
+        //   inicioBloque = max(InitHourSort de sus licencias)   -> RN-01
+        //   durBloque    = max(duration de sus licencias)       -> separación
+        //
+        //   ancla (grupo editado por el usuario, o licencia con turno guardado):
+        //       turno = su valor actual
+        //       alerta "solape"        si turno < cursor
+        //       alerta "antesDeInicio" si turno < inicioBloque
+        //   resto:
+        //       turno = max(cursor, inicioBloque, valorActual)
+        //       (empuja si hay solape, respeta lo que ya estaba más tarde, nunca adelanta;
+        //        adelantar en cascada es P-04 y va en 14a-2)
+        //
+        //   cursor = turno + durBloque
+        //
+        // RN-07: solo se alerta por conflicto real (solape o turno anterior a la hora de
+        // inicio) y solo del bloque ancla. Los huecos no generan alerta.
+        //
+        // Opciones:
+        //   consola              consola a recalcular (el motor trabaja de a una)
+        //   desdeGrupo           índice del primer bloque a recalcular; los previos solo
+        //                        alimentan el cursor
+        //   inicial              minutos del primer turno posible (por defecto 07:00)
+        //   orden                "inicio"  -> bloques por hora de inicio (asignación inicial)
+        //                        "visual"  -> bloques por posición en el array (cascada al editar)
+        //   anclas               claves de grupo cuyo turno no se recalcula
+        //   fijos                Set de Id de licencias con turno guardado: cada una es su
+        //                        propio bloque ancla
+        //   respetarValorActual  incluir el valor actual en el max() de los bloques no ancla
+        //
+        // Devuelve { alertas: [{ grupo, tipo, turno, minimo }] }.
+        recalcularDesde: function (licences, oOpciones) {
+            const oOpts = oOpciones || {};
+            const sConsola = oOpts.consola || "";
+            const iInicial = oOpts.inicial != null ? oOpts.inicial : 7 * 60;
+            const iDesdeGrupo = oOpts.desdeGrupo != null ? oOpts.desdeGrupo : 0;
+            const aAnclas = oOpts.anclas || [];
+            const oFijos = oOpts.fijos || new Set();
+            const bRespetarValor = oOpts.respetarValorActual === true;
+
+            const aGrupos = this._agruparPorConsola(licences, sConsola, oOpts.orden, oFijos);
+            const aAlertas = [];
+
+            let iCursor = iInicial;
+
+            aGrupos.forEach((oGrupo, iIndex) => {
+                const bAncla = oGrupo.fijo || aAnclas.indexOf(oGrupo.grupo) !== -1;
+                const iActual = this._turnoDelBloque(oGrupo.items);
+
+                // Bloques anteriores al punto de recálculo: se respetan y alimentan el cursor
+                if (iIndex < iDesdeGrupo) {
+                    if (iActual != null) {
+                        iCursor = Math.max(iCursor, iActual + oGrupo.duracion);
+                    }
+                    return;
+                }
+
+                let iTurno;
+
+                if (bAncla && iActual != null) {
+                    iTurno = iActual;
+
+                    if (iTurno < iCursor) {
+                        aAlertas.push({
+                            grupo: oGrupo.grupo, tipo: "solape",
+                            turno: iTurno, minimo: iCursor
+                        });
+                    }
+                    if (oGrupo.inicio != null && iTurno < oGrupo.inicio) {
+                        aAlertas.push({
+                            grupo: oGrupo.grupo, tipo: "antesDeInicio",
+                            turno: iTurno, minimo: oGrupo.inicio
+                        });
+                    }
+                } else {
+                    iTurno = Math.max(
+                        iCursor,
+                        oGrupo.inicio != null ? oGrupo.inicio : 0,
+                        bRespetarValor && iActual != null ? iActual : 0
+                    );
+
+                    const sTurno = this._formatTime(iTurno);
+                    oGrupo.items.forEach((it) => { it.TurnoAsignado = sTurno; });
+                }
+
+                iCursor = iTurno + oGrupo.duracion;
+            });
+
+            return { alertas: aAlertas };
+        },
+
+        // Bloques de una consola: clave = Grupo (o Equnr), salvo las licencias fijas, que
+        // forman bloque propio igual que antes hacían al salir por "return".
+        _agruparPorConsola: function (licences, sConsola, sOrden, oFijos) {
+            const mGrupos = {};
+            const oSetFijos = oFijos || new Set();
+
+            (licences || []).forEach((lic, idx) => {
+                if ((lic.Consola || "") !== sConsola) return;
+
+                const bFijo = oSetFijos.has(lic.Id);
+                const sClave = bFijo ? "fijo_" + lic.Id : (lic.Grupo || lic.Equnr || "");
+
+                if (!mGrupos[sClave]) {
+                    mGrupos[sClave] = { grupo: sClave, items: [], firstIndex: idx, fijo: bFijo };
+                }
+                mGrupos[sClave].items.push(lic);
+                if (idx < mGrupos[sClave].firstIndex) {
+                    mGrupos[sClave].firstIndex = idx;
+                }
+            });
+
+            const aGrupos = Object.keys(mGrupos).map((k) => mGrupos[k]);
+
+            aGrupos.forEach((g) => {
+                g.inicio = this._inicioBloque(g.items);
+                g.duracion = this._duracionBloque(g.items);
+                g.prioridad = this._prioridadBloque(g.items);
+            });
+
+            if (sOrden === "inicio") {
+                // Asignación inicial: por hora de inicio del bloque. Un bloque fijo se ordena
+                // por su turno guardado, que es la hora que efectivamente ocupa.
+                const fnClave = (g) => {
+                    if (g.fijo) {
+                        const iTurno = this._turnoDelBloque(g.items);
+                        if (iTurno != null) return iTurno;
+                    }
+                    return g.inicio != null ? g.inicio : Number.MAX_SAFE_INTEGER;
+                };
+
+                aGrupos.sort((a, b) => {
+                    const ia = fnClave(a), ib = fnClave(b);
+                    if (ia !== ib) return ia - ib;
+                    if (a.prioridad !== b.prioridad) return a.prioridad - b.prioridad;
+                    return a.firstIndex - b.firstIndex;
+                });
+            } else {
+                aGrupos.sort((a, b) => a.firstIndex - b.firstIndex);
+            }
+
+            return aGrupos;
+        },
+
+        // RN-01: el bloque no puede arrancar antes de la hora de inicio MÁS TARDÍA
+        // de las licencias que lo componen.
+        _inicioBloque: function (aItems) {
+            let iInicio = null;
+            (aItems || []).forEach((it) => {
+                const iHora = it.InitHourSort != null ? it.InitHourSort : Utils.getInitHourSort(it);
+                if (iHora == null || isNaN(iHora)) return;
+                if (iInicio == null || iHora > iInicio) { iInicio = iHora; }
+            });
+            return iInicio;
+        },
+
+        // Separación después de un bloque: la MAYOR duración de sus licencias
+        // (antes se usaba la de items[0], que podía dejar solapado al bloque siguiente).
+        _duracionBloque: function (aItems) {
+            let iDuracion = 0;
+            (aItems || []).forEach((it) => {
+                const iDur = Utils.getShiftInfo(it).duration;
+                if (iDur > iDuracion) { iDuracion = iDur; }
+            });
+            return iDuracion;
+        },
+
+        // Prioridad del bloque = la más alta (número más bajo) de sus licencias.
+        // Mismo criterio que _sortLicencesNuevoTurno en el controller.
+        _prioridadBloque: function (aItems) {
+            const mPrioridad = {
+                "ConsignacionLinea": 1,
+                "ConsignacionEquipo": 2,
+                "ManiobrasSinConsignacion": 3,
+                "TCTConBloqueo": 4,
+                "TCTSinBloqueo": 4,
+                "SinManiobras": 5
+            };
+
+            let iPrioridad = 5;
+            (aItems || []).forEach((it, i) => {
+                const iCat = mPrioridad[Utils.getShiftInfo(it).category] || 5;
+                if (i === 0 || iCat < iPrioridad) { iPrioridad = iCat; }
+            });
+            return iPrioridad;
+        },
+
+        // Turno del bloque en minutos, o null si ninguna de sus licencias tiene turno.
+        _turnoDelBloque: function (aItems) {
+            const oConTurno = (aItems || []).find((it) => !!it.TurnoAsignado);
+            return oConTurno ? this._convertTimeToMinutes(oConTurno.TurnoAsignado) : null;
+        },
+        // FIN MOD TRNS #SistemaDeTurno-14
 
         _formatTime: function (iMinutes) {
             // Convertir los minutos de nuevo a formato HH:mm
