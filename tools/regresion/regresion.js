@@ -758,6 +758,111 @@ console.log("\n=== 25. Invariantes con ediciones al azar ===");
     check("RN-01 en todos los bloques no fijados", okRn01);
 }
 
+// Pantalla mínima para correr los handlers reales del controller (onChangeHour,
+// onDetachLicense, _postAgregarLicencias): modelo JSON, TimePicker y tabla stub.
+function pantallaUI(aDatos) {
+    const ui = { data: aDatos };
+    const oModel = {
+        getProperty: (p) => p === "/" ? ui.data : undefined,
+        setProperty: (p, v) => { if (p === "/") ui.data = v; },
+        getData: () => ui.data,
+        refresh() { }
+    };
+    const ctx = Object.create(Ctrl);
+    ctx.getView = () => ({
+        setModel() { },
+        getModel: (n) => n === "i18n" ? { getResourceBundle: () => ({ getText: (k) => k }) }
+            : n === "LicencesJsonModel" ? oModel : undefined
+    });
+    ctx.byId = () => ({ getSelectedIndex: () => -1, clearSelection() { } });
+    const contexto = (idx) => ({ getPath: () => "/" + idx });
+
+    // Usuario cambia la hora de una fila: el binding two-way escribe el valor en el
+    // modelo y después el TimePicker dispara change -> onChangeHour
+    ui.hora = (id, sHora) => {
+        ui.data.forEach(l => { l.TurnoWarning = ""; });   // el timeout de 4" de la UI
+        const idx = ui.data.findIndex(l => l.Id === id);
+        ui.data[idx].TurnoAsignado = sHora;
+        const oPicker = { getBindingContext: () => contexto(idx), setValue() { }, setValueState() { }, setValueStateText() { } };
+        ctx.onChangeHour({ getSource: () => oPicker, getParameter: (k) => k === "value" ? sHora : undefined });
+    };
+    // Menú contextual -> Desacoplar
+    ui.desacoplar = (id) => {
+        ui.data.forEach(l => { l.TurnoWarning = ""; });
+        const idx = ui.data.findIndex(l => l.Id === id);
+        const oItem = { getParent: () => ({ getBindingContext: () => contexto(idx) }) };
+        ctx.onDetachLicense({ getSource: () => oItem });
+    };
+    // "+ Licencias": lo que hace appendLicencesToModel sobre el modelo + el post-proceso real
+    ui.agregar = (aNuevas) => {
+        ui.data.forEach(l => { l.TurnoWarning = ""; });
+        ctx._postAgregarLicencias(Svc.ubicarNuevas(ui.data, aNuevas));
+    };
+    ui.estado = (sPaso) => console.log("  " + sPaso + "\n" + ui.data.map(l =>
+        `      ${l.Id.padEnd(11)} ${(l.Consola || "").padEnd(12)} ${l.TurnoAsignado}  Fijado=${l.Fijado === true}` +
+        (l.TurnoWarning ? "  [alerta]" : "")).join("\n"));
+    return ui;
+}
+
+console.log("\n=== 26. Bug QAS 14a-2 (29.10.2026, CENTRO-CUYO): la cascada no empuja una fijada ===");
+{
+    // Secuencia exacta del reporte, por los handlers reales (no el motor directo).
+    // Bloque 1AC-DEH1: L202600275 (08:00), L202600272 y L202600276 (10:00),
+    // L202600279 (12:00, TcT 15'); después 1AC-BVI1 = L202600271 (10:00); 5APA en NEA.
+    const tct15 = { Jobcond: "04", Tipoequipo: "L1" };
+    const cc = (Id, Equnr, inicio, turno, extra) => lic(Id, Equnr, "CENTRO-CUYO", inicio, "sin10",
+        Object.assign({ TurnoAsignado: turno }, extra || {}));
+    const d = [
+        cc("L202600275", "1AC-DEH1", hhmm(8), "08:00"),
+        cc("L202600272", "1AC-DEH1", hhmm(10), "08:00"),
+        cc("L202600276", "1AC-DEH1", hhmm(10), "08:00"),
+        cc("L202600279", "1AC-DEH1", hhmm(12), "08:00", tct15),
+        cc("L202600271", "1AC-BVI1", hhmm(10), "10:00"),
+        lic("L5APA", "5APA", "NEA", hhmm(7), "sin10", { TurnoAsignado: "07:00" })
+    ];
+    Ctrl._rebuildFrontendGroupsByEquipo(d);   // turno ya creado: grupos armados
+    const ui = pantallaUI(d);
+    const DEH1 = ["L202600275", "L202600272", "L202600276", "L202600279"];
+    const BVI1 = "L202600271";
+    const deh = (fn) => DEH1.every(id => fn(L(ui.data, id)));
+    ui.estado("inicial");
+
+    ui.hora("L202600275", "10:00"); ui.estado("1. bloque 1AC-DEH1 -> 10:00");
+    check("1: 1AC-BVI1 -> 10:15 (10:00 + TcT 15')", t(ui.data, BVI1) === "10:15");
+    check("1: el bloque 1AC-DEH1 queda fijado", deh(l => l.Fijado === true));
+
+    ui.hora("L202600275", "09:50"); ui.estado("2. bloque 1AC-DEH1 -> 09:50");
+    check("2: 1AC-BVI1 se adelanta a 10:05 (P-04)", t(ui.data, BVI1) === "10:05");
+    check("2: 1AC-BVI1 sigue sin fijar", L(ui.data, BVI1).Fijado !== true);
+
+    ui.hora(BVI1, "11:00"); ui.estado("3. 1AC-BVI1 -> 11:00 a mano");
+    check("3: 1AC-BVI1 en 11:00 y Fijado = true", t(ui.data, BVI1) === "11:00" && L(ui.data, BVI1).Fijado === true);
+    check("3: 1AC-DEH1 no cambia (09:50, fijado)", deh(l => l.TurnoAsignado === "09:50" && l.Fijado === true));
+
+    ui.hora("L202600275", "10:50"); ui.estado("4. bloque 1AC-DEH1 -> 10:50");
+    check("4: 1AC-BVI1 fijada sigue en 11:00 (no se empuja a 11:05)", t(ui.data, BVI1) === "11:00", t(ui.data, BVI1));
+    check("4: 1AC-BVI1 sigue fijada", L(ui.data, BVI1).Fijado === true);
+    check("4: alerta solapeFijada sobre 1AC-BVI1", !!L(ui.data, BVI1).TurnoWarning);
+    check("4: 5APA (NEA) no se toca", t(ui.data, "L5APA") === "07:00");
+
+    // Punto 4 del pedido: el mismo choque por los otros caminos
+    ui.hora("L202600275", ""); ui.estado("5. se borra la hora de 1AC-DEH1 (P-07)");
+    check("5: 1AC-DEH1 libre, vuelve a 08:00 (su inicio)", deh(l => l.Fijado === false && l.TurnoAsignado === "08:00"));
+    check("5: 1AC-BVI1 fijada sigue en 11:00", t(ui.data, BVI1) === "11:00" && L(ui.data, BVI1).Fijado === true);
+
+    ui.desacoplar("L202600279"); ui.estado("6. se desacopla L202600279 (TcT)");
+    check("6: queda a continuación de su bloque", ids(ui.data) === "L202600275,L202600272,L202600276,L202600279,L202600271,L5APA", ids(ui.data));
+    check("6: L202600279 = 12:00 (su inicio), sin fijar", t(ui.data, "L202600279") === "12:00" && L(ui.data, "L202600279").Fijado === false);
+    check("6: 1AC-BVI1 fijada sigue en 11:00 y alerta", t(ui.data, BVI1) === "11:00" && !!L(ui.data, BVI1).TurnoWarning);
+
+    ui.agregar([lic("LNUEVA", "1AC-NUE1", "CENTRO-CUYO", hhmm(10, 30), "sin10",
+        { Grupo: "_Desacoplado_LNUEVA", Desacoplado: false, Fijado: false, Orden: 0 })]);
+    ui.estado("7. \"+ Licencias\": nueva con inicio 10:30");
+    check("7: la nueva queda antes del bloque de las 12:00", ids(ui.data) === "L202600275,L202600272,L202600276,LNUEVA,L202600279,L202600271,L5APA", ids(ui.data));
+    check("7: nueva = 10:30 y 1AC-BVI1 fijada sigue en 11:00",
+        t(ui.data, "LNUEVA") === "10:30" && t(ui.data, BVI1) === "11:00" && L(ui.data, BVI1).Fijado === true);
+}
+
 console.log("\n==================================================");
 console.log(fail === 0 ? `TODO OK  (${pass} checks)` : `${fail} FALLAS de ${pass + fail} checks`);
 process.exit(fail === 0 ? 0 : 1);

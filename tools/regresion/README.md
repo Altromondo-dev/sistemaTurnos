@@ -161,6 +161,24 @@ controllers:
     escenario 12: el orden nunca cambia, ninguna fijada cambia salvo la editada y
     RN-01 se cumple en los bloques no fijados.
 
+26. **Bug QAS 29.10.2026 (P-03), por los handlers reales** — secuencia exacta del
+    reporte en CENTRO-CUYO (bloque 1AC-DEH1 → 10:00 → 09:50, 1AC-BVI1 → 11:00 a
+    mano, 1AC-DEH1 → 10:50) pasando por `onChangeHour`, con el binding two-way
+    simulado, e imprimiendo `Fijado` de cada fila en cada paso: 1AC-BVI1 queda en
+    11:00, fijada y con alerta. Sigue con el mismo choque por los otros caminos:
+    borrar la hora (P-07), `onDetachLicense` y "+ Licencias" (`ubicarNuevas` +
+    `_postAgregarLicencias`). Usa `pantallaUI()`, una pantalla mínima (modelo
+    JSON, TimePicker y tabla stub) para correr los handlers del controller.
+
+    Con `Main.controller.js` de 14a-2 y `TurnosService.js` de 14a-1, la secuencia da
+    exactamente lo observado en QAS (10:15 / 10:05 / 11:00 / **11:05** con
+    `Fijado = true`): el controller marca la fila, pero el motor viejo no conoce
+    `alFijada` ni `g.fijado`. Los dos archivos tienen que desplegarse juntos.
+
+`harness.js` expone `setTimeout` como no-op: los warnings de turno se limpian
+a los 4" en la UI; en la regresión no hay nada que refrescar y no debe quedar el
+proceso esperando.
+
 ## Datos de prueba
 
 El helper `lic(Id, Equnr, Consola, InitHourSort, categoria, extra)` arma licencias

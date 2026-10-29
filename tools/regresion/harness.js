@@ -37,6 +37,9 @@ function loadModule(depName) {
     let result;
     const sandbox = {
         console,
+        // Los warnings de turno se limpian a los 4" con setTimeout: en la regresión no
+        // se ejecuta (no hay UI que refrescar y no debe retener el proceso).
+        setTimeout: () => 0,
         Date, Math, JSON, Object, Array, String, Number, Boolean, Promise, Map, Set, RegExp, Error, isNaN, parseInt, parseFloat,
         jQuery: stubFor("jQuery"),
         window: {},
