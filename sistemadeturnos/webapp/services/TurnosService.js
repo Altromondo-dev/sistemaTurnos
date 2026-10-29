@@ -216,8 +216,15 @@ sap.ui.define([
 
             Object.keys(groupedByConsola).forEach((consola) => {
                 let currentTime = initialTime;
-                let previousGrupo = "";
-                let firstShiftInGroup = "";
+                // INI MOD TRNS #SistemaDeTurno-12-13
+                // let previousGrupo = "";
+                // let firstShiftInGroup = "";
+
+                // Hora ya fijada por cada grupo de esta consola.
+                // Permite que licencias del mismo grupo compartan turno aunque no
+                // estén contiguas en el array (p.ej. ordenadas por hora de inicio).
+                const mTurnoPorGrupo = {};
+                // FIN MOD TRNS #SistemaDeTurno-12-13
 
                 groupedByConsola[consola].forEach((license) => {
 
@@ -280,16 +287,29 @@ sap.ui.define([
                     }
 
                     // 4) Grupos normales
-                    if (license.Grupo !== previousGrupo) {
-                        previousGrupo = license.Grupo;
+                    // INI MOD TRNS #SistemaDeTurno-12-13
+                    // if (license.Grupo !== previousGrupo) {
+                    //     previousGrupo = license.Grupo;
+                    //
+                    //     firstShiftInGroup = this._formatTime(currentTime);
+                    //     license.TurnoAsignado = firstShiftInGroup;
+                    //
+                    //     currentTime += shiftDuration;
+                    // } else {
+                    //     license.TurnoAsignado = firstShiftInGroup;
+                    // }
 
-                        firstShiftInGroup = this._formatTime(currentTime);
-                        license.TurnoAsignado = firstShiftInGroup;
+                    // La primera licencia del grupo fija la hora y avanza el cursor;
+                    // las siguientes del mismo grupo copian esa hora aunque no sean contiguas.
+                    if (mTurnoPorGrupo[license.Grupo] === undefined) {
+                        mTurnoPorGrupo[license.Grupo] = this._formatTime(currentTime);
+                        license.TurnoAsignado = mTurnoPorGrupo[license.Grupo];
 
                         currentTime += shiftDuration;
                     } else {
-                        license.TurnoAsignado = firstShiftInGroup;
+                        license.TurnoAsignado = mTurnoPorGrupo[license.Grupo];
                     }
+                    // FIN MOD TRNS #SistemaDeTurno-12-13
                 });
 
                 // Ordenar por turno asignado

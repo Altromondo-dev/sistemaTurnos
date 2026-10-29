@@ -2825,6 +2825,9 @@ sap.ui.define([
                     // Reasignar turnos según el nuevo orden
                     TurnosService.assignShiftsToLicences(data);
                     // INI MOD TRNS #SistemaDeTurno-12-13
+                    // Las licencias de un mismo grupo comparten TurnoAsignado: reordenar
+                    // por consola + hora asignada las deja contiguas en la tabla.
+                    this._sortLicences(data);
                     // Agrupar por equipo y colorear igual que en un turno existente
                     this._rebuildFrontendGroupsByEquipo(data);
                     this._assignGroupColors(data);

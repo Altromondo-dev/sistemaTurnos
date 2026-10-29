@@ -113,8 +113,13 @@
                             <!-- INI MOD TRNS #SistemaDeTurno-1 -->
                             <!-- Alto de filas según el texto de "Trabajo a realizar" -->
                             <!-- <t:Table id="turnosTable" selectionMode="None" selectionBehavior="Row" ariaLabelledBy="title2" rows="{LicencesJsonModel>/}" filter=".onColumnFilter"> -->
-                            <t:Table id="turnosTable" selectionMode="None" selectionBehavior="Row" ariaLabelledBy="title2" rows="{LicencesJsonModel>/}" filter=".onColumnFilter" columnResize=".onColumnResizeAltoFilas" rowsUpdated=".onRowsUpdatedAltoFilas">
+                            <!-- <t:Table id="turnosTable" selectionMode="None" selectionBehavior="Row" ariaLabelledBy="title2" rows="{LicencesJsonModel>/}" filter=".onColumnFilter" columnResize=".onColumnResizeAltoFilas" rowsUpdated=".onRowsUpdatedAltoFilas"> -->
                             <!-- FIN MOD TRNS #SistemaDeTurno-1 -->
+                            <!-- INI MOD TRNS #SistemaDeTurno-12-13 -->
+                            <!-- Se bloquea el reordenamiento de columnas (igual que en el resto de las tablas)
+                                 para que el orden sea siempre el del view -->
+                            <t:Table id="turnosTable" selectionMode="None" selectionBehavior="Row" enableColumnReordering="false" ariaLabelledBy="title2" rows="{LicencesJsonModel>/}" filter=".onColumnFilter" columnResize=".onColumnResizeAltoFilas" rowsUpdated=".onRowsUpdatedAltoFilas">
+                            <!-- FIN MOD TRNS #SistemaDeTurno-12-13 -->
                                 <!-- Muestra tantas filas como entren en el alto disponible -->
                                 <t:rowMode>
                                     <rowmodes:Auto minRowCount="5" />
