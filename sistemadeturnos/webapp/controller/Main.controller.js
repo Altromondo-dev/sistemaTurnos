@@ -2605,6 +2605,11 @@ sap.ui.define([
                                     // INI MOD TRNS #SistemaDeTurno-12-13
                                     Desacoplado: oGuardada ? oGuardada.Desacoplado === true : false,
                                     // FIN MOD TRNS #SistemaDeTurno-12-13
+                                    // INI MOD TRNS #SistemaDeTurno-14
+                                    // Orden 0 = licencia nueva para esta fecha (se ubica por hora de inicio)
+                                    Orden: oGuardada ? Number(oGuardada.Orden) || 0 : 0,
+                                    Fijado: oGuardada ? oGuardada.Fijado === true : false,
+                                    // FIN MOD TRNS #SistemaDeTurno-14
                                     Dateturno: oDateValue
                                 };
                             });
@@ -3135,6 +3140,14 @@ sap.ui.define([
                                 // INI MOD TRNS #SistemaDeTurno-12-13
                                 Desacoplado: turnoLicencia.Desacoplado === true,
                                 // FIN MOD TRNS #SistemaDeTurno-12-13
+                                // INI MOD TRNS #SistemaDeTurno-14
+                                // _originalOrden guarda lo que vino del backend: en un turno
+                                // anterior a 14a-2 (Orden 0) el primer guardado lo migra.
+                                Orden: Number(turnoLicencia.Orden) || 0,
+                                Fijado: turnoLicencia.Fijado === true,
+                                _originalOrden: Number(turnoLicencia.Orden) || 0,
+                                _originalFijado: turnoLicencia.Fijado === true,
+                                // FIN MOD TRNS #SistemaDeTurno-14
                                 Comentarios: sComentariosCargados,
                                 _originalComentarios: sComentariosCargados,
                                 _originalTurno: turnoLicencia.Turno || "",
@@ -3167,6 +3180,12 @@ sap.ui.define([
                                     // INI MOD TRNS #SistemaDeTurno-12-13
                                     result.Desacoplado = turnoLicencia.Desacoplado === true;
                                     // FIN MOD TRNS #SistemaDeTurno-12-13
+                                    // INI MOD TRNS #SistemaDeTurno-14
+                                    result.Orden = Number(turnoLicencia.Orden) || 0;
+                                    result.Fijado = turnoLicencia.Fijado === true;
+                                    result._originalOrden = result.Orden;
+                                    result._originalFijado = result.Fijado;
+                                    // FIN MOD TRNS #SistemaDeTurno-14
                                     const sComentariosError = turnoLicencia.Comentarios || result.Comentarios || (mComentariosPreservados && mComentariosPreservados[turnoLicencia.Id]) || "";
                                     result.Comentarios = sComentariosError;
                                     result._originalComentarios = sComentariosError;
@@ -3290,10 +3309,24 @@ sap.ui.define([
                             // this._rebuildFrontendGroupsByEquipoHora(arrayOrdenado);
                             this._rebuildFrontendGroupsByEquipo(arrayOrdenado);
                             // FIN MOD TRNS #SistemaDeTurno-12-13
-                            this._assignGroupColors(arrayOrdenado);
+                            // INI MOD TRNS #SistemaDeTurno-14
+                            // this._assignGroupColors(arrayOrdenado);
+                            //
+                            // // Ordenar por consola y luego por hora dentro de cada consola
+                            // this._sortLicences(arrayOrdenado);
 
-                            // Ordenar por consola y luego por hora dentro de cada consola
-                            this._sortLicences(arrayOrdenado);
+                            // P-06: con Orden guardado se respeta el orden de pantalla y las
+                            // licencias nuevas se ubican por hora de inicio (P-05). Un turno
+                            // anterior a 14a-2 (todo Orden 0) se muestra igual que en 14a-1.
+                            var aAlertasCarga = [];
+                            if (arrayOrdenado.some(it => Number(it.Orden) > 0)) {
+                                aAlertasCarga = TurnosService.cargarConOrden(arrayOrdenado).alertas;
+                                this._assignGroupColors(arrayOrdenado);
+                            } else {
+                                this._assignGroupColors(arrayOrdenado);
+                                this._sortLicences(arrayOrdenado);
+                            }
+                            // FIN MOD TRNS #SistemaDeTurno-14
 
                             // Sincronizar valores originales con los valores finales mostrados al usuario
                             arrayOrdenado.forEach(function (item) {
@@ -3306,6 +3339,10 @@ sap.ui.define([
 
                             oLicencesModel.setData(arrayOrdenado);
                             Utils.onCountItems(oView, arrayOrdenado);
+                            // INI MOD TRNS #SistemaDeTurno-14
+                            // Una licencia nueva que pisa una fila fijada: se alerta, no se modifica
+                            this._mostrarAlertasMotor(arrayOrdenado, aAlertasCarga, null, oLicencesModel);
+                            // FIN MOD TRNS #SistemaDeTurno-14
 
                             //CLONAR Y AGREGAR DESCRIPCIONES TAMBIÉN AL CLON
                             const arrayClonado = JSON.parse(JSON.stringify(arrayOrdenado));
@@ -3479,10 +3516,17 @@ sap.ui.define([
 
             // ✅ NUEVO: Si el campo quedó vacío, recalcular según la regla
             if (!sNewTime || sNewTime.trim() === "") {
-                this._recalculateEmptyShift(aLicences, oSelectedLicence, iLicenseIndex);
+                // INI MOD TRNS #SistemaDeTurno-14
+                // this._recalculateEmptyShift(aLicences, oSelectedLicence, iLicenseIndex);
+                // P-07: la fila deja de estar fijada y vuelve al cálculo automático
+                var aAlertasVaciado = this._recalculateEmptyShift(aLicences, oSelectedLicence, iLicenseIndex);
+                // FIN MOD TRNS #SistemaDeTurno-14
 
                 oModel.setProperty("/", aLicences);
                 oModel.refresh(true);
+                // INI MOD TRNS #SistemaDeTurno-14
+                this._mostrarAlertasMotor(aLicences, aAlertasVaciado, null, oModel);
+                // FIN MOD TRNS #SistemaDeTurno-14
                 // INI MOD TRNS #SistemaDeTurno-8-9-10
                 this._onTurnoModificado(this._getGruposAfectados(mAntes, aLicences, [oSelectedLicence.Id]));
                 // FIN MOD TRNS #SistemaDeTurno-8-9-10
@@ -3501,14 +3545,21 @@ sap.ui.define([
                             //oSource.setValueStateText(oResourceBundle.getText("invalidShiftTimeRange"));
 
                             this._updateSameGroupAndConsoleShifts(aLicences, oSelectedLicence, "");
+                            // INI MOD TRNS #SistemaDeTurno-14
+                            // Hora vaciada: el bloque deja de estar fijado (P-07)
+                            this._setFijadoGrupo(aLicences, oSelectedLicence, false);
+                            // FIN MOD TRNS #SistemaDeTurno-14
 
                             // INI MOD TRNS #SistemaDeTurno-12-13
                             // this._rebuildFrontendGroupsByEquipoHora(aLicences);
                             this._rebuildFrontendGroupsByEquipo(aLicences);
                             // FIN MOD TRNS #SistemaDeTurno-12-13
 
-                            // ordenar y refrescar el modelo completo
-                            this._sortLicences(aLicences);
+                            // INI MOD TRNS #SistemaDeTurno-14
+                            // RN-02: la fila queda en su posición
+                            // // ordenar y refrescar el modelo completo
+                            // this._sortLicences(aLicences);
+                            // FIN MOD TRNS #SistemaDeTurno-14
                             oModel.setProperty("/", aLicences);
                             oModel.refresh(true);
                             // INI MOD TRNS #SistemaDeTurno-8-9-10
@@ -3525,13 +3576,20 @@ sap.ui.define([
 
             // Solo actualizar licencia individual
             this._updateSameGroupAndConsoleShifts(aLicences, oSelectedLicence, sNewTime);
+            // INI MOD TRNS #SistemaDeTurno-14
+            // RN-03/04: el valor editado queda fijado (todo el bloque) y es la referencia
+            this._setFijadoGrupo(aLicences, oSelectedLicence, true);
+            // FIN MOD TRNS #SistemaDeTurno-14
             // INI MOD TRNS #SistemaDeTurno-12-13
             // this._rebuildFrontendGroupsByEquipoHora(aLicences);
             this._rebuildFrontendGroupsByEquipo(aLicences);
             // FIN MOD TRNS #SistemaDeTurno-12-13
             this._assignGroupColors(aLicences);
 
-            this._sortLicences(aLicences);
+            // INI MOD TRNS #SistemaDeTurno-14
+            // RN-02: la fila (o el bloque) queda en su posición; el índice no cambia
+            // this._sortLicences(aLicences);
+            // FIN MOD TRNS #SistemaDeTurno-14
 
             const iNewIndex = aLicences.findIndex(function (lic) {
                 return lic === oSelectedLicence;
@@ -3571,8 +3629,6 @@ sap.ui.define([
         // Devuelve las licencias que quedaron marcadas con TurnoWarning, para que el
         // caller las limpie después de mostrarlas una sola vez.
         _recalcularDesde: function (aLicences, iStartIndex, oTimeControl) {
-            var ValueState = CoreLibrary.ValueState;
-
             if (iStartIndex < 0 || iStartIndex >= aLicences.length) {
                 return [];
             }
@@ -3602,81 +3658,142 @@ sap.ui.define([
                 }
             });
 
+            // RN-03/04 + P-03 + P-04: solo se recalculan las filas posteriores no fijadas,
+            // en ambos sentidos (respetarValorActual: false), y la cascada se detiene en la
+            // siguiente fijada sin modificarla.
             var oResultado = TurnosService.recalcularDesde(aLicences, {
                 consola: sConsola,
                 desdeGrupo: iDesdeGrupo,
                 orden: "visual",
                 anclas: [sGrupoEditado],
-                respetarValorActual: true
+                respetarValorActual: false,
+                alFijada: "detener"
             });
 
             // RN-07: solo se alerta por conflicto real, y la alerta no bloquea ni corrige.
-            var aAlertas = oResultado.alertas || [];
-            var bSolape = aAlertas.some(function (a) { return a.tipo === "solape"; });
-            var bAntesDeInicio = aAlertas.some(function (a) { return a.tipo === "antesDeInicio"; });
+            return this._mostrarAlertasMotor(aLicences, oResultado.alertas, oTimeControl);
+        },
 
-            var aMensajes = [];
-            if (bSolape) {
-                aMensajes.push("El turno comienza antes de la separación mínima con el grupo anterior.");
-            }
-            if (bAntesDeInicio) {
-                aMensajes.push("El turno comienza antes de la hora de inicio de la licencia.");
-            }
+        // Marca con TurnoWarning los bloques de las alertas del motor y muestra un único
+        // mensaje. Con oTimeControl, refleja en él los conflictos del bloque editado.
+        // Con oModel, el warning se limpia solo a los 4 segundos; si no, lo limpia el
+        // caller con las licencias devueltas.
+        _mostrarAlertasMotor: function (aLicences, aAlertas, oTimeControl, oModel) {
+            var ValueState = CoreLibrary.ValueState;
+            var aLista = aAlertas || [];
+            var mTextos = {
+                solape: "El turno comienza antes de la separación mínima con el grupo anterior.",
+                antesDeInicio: "El turno comienza antes de la hora de inicio de la licencia.",
+                solapeFijada: "Una fila fijada quedó solapada con el grupo anterior y no se modificó."
+            };
+            var fnHay = function (sTipo) {
+                return aLista.some(function (a) { return a.tipo === sTipo; });
+            };
+
+            var aMensajes = ["solape", "antesDeInicio", "solapeFijada"]
+                .filter(fnHay)
+                .map(function (sTipo) { return mTextos[sTipo]; });
 
             var aWarningItems = [];
 
-            if (aMensajes.length > 0) {
-                var sMensaje = aMensajes.join(" ");
-
-                MessageHelper.show(sMensaje);
-
-                aGrupos[iDesdeGrupo].items.forEach(function (it) {
-                    it.TurnoWarning = sMensaje;
-                    aWarningItems.push(it);
-                });
-
+            if (aMensajes.length === 0) {
                 if (oTimeControl) {
+                    oTimeControl.setValueState(ValueState.None);
+                    oTimeControl.setValueStateText("");
+                }
+                return aWarningItems;
+            }
+
+            var sMensaje = aMensajes.join(" ");
+            MessageHelper.show(sMensaje);
+
+            (aLicences || []).forEach(function (lic) {
+                var bAlertada = aLista.some(function (a) {
+                    return (lic.Consola || "") === a.consola && (lic.Grupo || lic.Equnr || "") === a.grupo;
+                });
+                if (bAlertada) {
+                    lic.TurnoWarning = sMensaje;
+                    aWarningItems.push(lic);
+                }
+            });
+
+            if (oTimeControl) {
+                if (fnHay("solape") || fnHay("antesDeInicio")) {
                     oTimeControl.setValueState(ValueState.Error);
                     oTimeControl.setValueStateText(sMensaje);
+                } else {
+                    oTimeControl.setValueState(ValueState.None);
+                    oTimeControl.setValueStateText("");
                 }
-            } else if (oTimeControl) {
-                oTimeControl.setValueState(ValueState.None);
-                oTimeControl.setValueStateText("");
+            }
+
+            if (oModel && aWarningItems.length > 0) {
+                setTimeout(function () {
+                    aWarningItems.forEach(function (it) { it.TurnoWarning = ""; });
+                    oModel.refresh(true);
+                }, 4000);
             }
 
             return aWarningItems;
         },
+
+        // El bloque se fija y se libera entero: Fijado viaja por licencia al backend,
+        // pero la edición de turno siempre afecta a todo el grupo.
+        _setFijadoGrupo: function (aLicences, oLicence, bFijado) {
+            aLicences.forEach(function (oLic) {
+                if (oLic.Consola === oLicence.Consola && oLic.Grupo === oLicence.Grupo) {
+                    oLic.Fijado = bFijado;
+                }
+            });
+        },
         // FIN MOD TRNS #SistemaDeTurno-14
 
+        // INI MOD TRNS #SistemaDeTurno-14
+        // Devuelve las alertas del motor (choque con una fila fijada) para que las
+        // muestre el caller.
+        // FIN MOD TRNS #SistemaDeTurno-14
         _recalculateEmptyShift: function (aLicences, oSelectedLicence, iLicenseIndex) {
             const consola = oSelectedLicence.Consola;
 
             if (!consola) {
-                return;
+                // INI MOD TRNS #SistemaDeTurno-14
+                // return;
+                return [];
+                // FIN MOD TRNS #SistemaDeTurno-14
             }
 
             // 1) Actualizar el grupo actual a vacío
             this._updateSameGroupAndConsoleShifts(aLicences, oSelectedLicence, "");
 
             // INI MOD TRNS #SistemaDeTurno-14
+            // P-07: borrar la hora libera el bloque y vuelve al cálculo automático
+            this._setFijadoGrupo(aLicences, oSelectedLicence, false);
+
             // 2) El grupo vaciado y los siguientes los recalcula el motor único.
-            //    Sin anclas: el grupo vaciado toma max(cursor, hora de inicio).
+            //    Sin anclas: el grupo vaciado toma max(cursor, hora de inicio); los
+            //    posteriores no fijados se adelantan o atrasan (P-04) hasta la siguiente
+            //    fijada (P-03).
             const aGrupos = TurnosService._agruparPorConsola(aLicences, consola, "visual", null);
             const iDesdeGrupo = aGrupos.findIndex(g => g.items.indexOf(oSelectedLicence) !== -1);
 
+            let aAlertas = [];
             if (iDesdeGrupo !== -1) {
-                TurnosService.recalcularDesde(aLicences, {
+                aAlertas = TurnosService.recalcularDesde(aLicences, {
                     consola: consola,
                     desdeGrupo: iDesdeGrupo,
                     orden: "visual",
                     anclas: [],
-                    respetarValorActual: true
-                });
+                    respetarValorActual: false,
+                    alFijada: "detener"
+                }).alertas;
             }
 
             this._rebuildFrontendGroupsByEquipo(aLicences);
             this._assignGroupColors(aLicences);
-            this._sortLicences(aLicences);
+            // RN-02: la fila queda en su posición
+            // this._sortLicences(aLicences);
+            return aAlertas;
+            // FIN MOD TRNS #SistemaDeTurno-14
         },
 
         /* Reemplazado por el motor único (TurnosService.recalcularDesde):
@@ -4168,24 +4285,30 @@ sap.ui.define([
             }
             // FIN MOD TRNS #SistemaDeTurno-12-13
 
-            // Get the last license in the group to calculate the new time 
-            var oLastLicenseInGroup = aLicences[groupLastIndex];
-            var currentTime = this._convertShiftToMinutes(oLastLicenseInGroup.TurnoAsignado);
-            const shiftInfo = Utils.getShiftInfo(oDetachedLicense);
-            const shiftDuration = shiftInfo.duration;
-
-            currentTime += shiftDuration;
-            oDetachedLicense.TurnoAsignado = this._formatTime(currentTime);
-
-            // Assign a unique group for the detached license
-            oDetachedLicense.Grupo = "_Desacoplado_" + oDetachedLicense.Id;
-            // INI MOD TRNS #SistemaDeTurno-12-13
-            // Persistente: el rearmado respeta el flag y se guarda en TurnosLicenciasSet
-            oDetachedLicense.Desacoplado = true;
-            // FIN MOD TRNS #SistemaDeTurno-12-13
-
-            // Insert the detached license after the last element of the group
-            aLicences.splice(groupLastIndex + 1, 0, oDetachedLicense);
+            // INI MOD TRNS #SistemaDeTurno-14
+            // Figura 4 + RN-02: la desacoplada ya no va al final de la consola, queda
+            // inmediatamente después de su bloque (ver _desacoplarEnLugar).
+            //
+            // // Get the last license in the group to calculate the new time
+            // var oLastLicenseInGroup = aLicences[groupLastIndex];
+            // var currentTime = this._convertShiftToMinutes(oLastLicenseInGroup.TurnoAsignado);
+            // const shiftInfo = Utils.getShiftInfo(oDetachedLicense);
+            // const shiftDuration = shiftInfo.duration;
+            //
+            // currentTime += shiftDuration;
+            // oDetachedLicense.TurnoAsignado = this._formatTime(currentTime);
+            //
+            // // Assign a unique group for the detached license
+            // oDetachedLicense.Grupo = "_Desacoplado_" + oDetachedLicense.Id;
+            // // INI MOD TRNS #SistemaDeTurno-12-13
+            // // Persistente: el rearmado respeta el flag y se guarda en TurnosLicenciasSet
+            // oDetachedLicense.Desacoplado = true;
+            // // FIN MOD TRNS #SistemaDeTurno-12-13
+            //
+            // // Insert the detached license after the last element of the group
+            // aLicences.splice(groupLastIndex + 1, 0, oDetachedLicense);
+            var aAlertasDesacople = this._desacoplarEnLugar(aLicences, oDetachedLicense, iSelectedIndex);
+            // FIN MOD TRNS #SistemaDeTurno-14
 
             // INI MOD TRNS #SistemaDeTurno-12-13
             // this._rebuildFrontendGroupsByEquipoHora(aLicences);
@@ -4196,6 +4319,9 @@ sap.ui.define([
             // Update the model
             oModel.setProperty("/", aLicences);
             oModel.refresh(true);
+            // INI MOD TRNS #SistemaDeTurno-14
+            this._mostrarAlertasMotor(aLicences, aAlertasDesacople, null, oModel);
+            // FIN MOD TRNS #SistemaDeTurno-14
 
             // INI MOD TRNS #SistemaDeTurno-8-9-10
             this._onTurnoModificado(this._getGruposAfectados(mAntes, aLicences, [oDetachedLicense.Id]));
@@ -4207,9 +4333,74 @@ sap.ui.define([
             // Notify the user
             // INI MOD TRNS #SistemaDeTurno-6
             // MessageToast.show("Licencia desacoplada, asignada después del último elemento del grupo con nuevo turno y grupo individual.");
-            MessageHelper.show("Licencia desacoplada, asignada después del último elemento del grupo con nuevo turno y grupo individual.");
+            // INI MOD TRNS #SistemaDeTurno-14
+            // MessageHelper.show("Licencia desacoplada, asignada después del último elemento del grupo con nuevo turno y grupo individual.");
+            MessageHelper.show("Licencia desacoplada: queda a continuación de su bloque, con turno y grupo propios.");
+            // FIN MOD TRNS #SistemaDeTurno-14
             // FIN MOD TRNS #SistemaDeTurno-6
         },
+
+        // INI MOD TRNS #SistemaDeTurno-14
+        // Desacople en su lugar (Figura 4 + RN-02). oLicence ya fue quitada de aLicences
+        // e iIndiceOriginal es la posición que ocupaba.
+        //  - Queda inmediatamente después de su bloque; si del mismo bloque ya se habían
+        //    desacoplado otras, después de ellas (quedan consecutivas).
+        //  - Sin fijar, con turno max(cursor, inicio); la cascada sigue desde ahí y se
+        //    detiene en la siguiente fijada (P-03).
+        // Devuelve las alertas del motor.
+        _desacoplarEnLugar: function (aLicences, oLicence, iIndiceOriginal) {
+            var sConsola = oLicence.Consola || "";
+            var sGrupoAnterior = oLicence.Grupo;
+            var sEquipo = (oLicence.Equnr || "").trim();
+
+            var iUltimaBloque = -1;
+            aLicences.forEach(function (oLic, i) {
+                if ((oLic.Consola || "") === sConsola && oLic.Grupo === sGrupoAnterior) {
+                    iUltimaBloque = i;
+                }
+            });
+
+            var iInsertar;
+            if (iUltimaBloque === -1) {
+                // Era la única fila de su bloque: no se mueve
+                iInsertar = Math.min(iIndiceOriginal, aLicences.length);
+            } else {
+                iInsertar = iUltimaBloque + 1;
+                while (iInsertar < aLicences.length &&
+                    (aLicences[iInsertar].Consola || "") === sConsola &&
+                    aLicences[iInsertar].Desacoplado === true &&
+                    (aLicences[iInsertar].Equnr || "").trim() === sEquipo) {
+                    iInsertar++;
+                }
+            }
+
+            oLicence.Grupo = "_Desacoplado_" + oLicence.Id;
+            // Persistente: el rearmado respeta el flag y se guarda en TurnosLicenciasSet
+            oLicence.Desacoplado = true;
+            oLicence.Fijado = false;
+            oLicence.TurnoAsignado = "";
+
+            aLicences.splice(iInsertar, 0, oLicence);
+            this._rebuildFrontendGroupsByEquipo(aLicences);
+
+            var aGrupos = TurnosService._agruparPorConsola(aLicences, sConsola, "visual", null);
+            var iDesdeGrupo = aGrupos.findIndex(function (g) {
+                return g.items.indexOf(oLicence) !== -1;
+            });
+            if (iDesdeGrupo === -1) {
+                return [];
+            }
+
+            return TurnosService.recalcularDesde(aLicences, {
+                consola: sConsola,
+                desdeGrupo: iDesdeGrupo,
+                orden: "visual",
+                anclas: [],
+                respetarValorActual: false,
+                alFijada: "detener"
+            }).alertas;
+        },
+        // FIN MOD TRNS #SistemaDeTurno-14
 
         _formatTime: function (iMinutes) {
             // Convertir los minutos de nuevo a formato HH:mm
@@ -4378,7 +4569,10 @@ sap.ui.define([
             );
 
             if (aEquiposUnicosDedup.length === 0) {
-                TurnosService.appendLicencesToModel(aNewData, this.getView());
+                // INI MOD TRNS #SistemaDeTurno-14
+                // TurnosService.appendLicencesToModel(aNewData, this.getView());
+                this._postAgregarLicencias(TurnosService.appendLicencesToModel(aNewData, this.getView()));
+                // FIN MOD TRNS #SistemaDeTurno-14
                 MessageBox.success("Se han agregado " + aNewData.length + " elementos correctamente.");
                 return;
             }
@@ -4395,14 +4589,38 @@ sap.ui.define([
                             : item.Equnr;
                     });
 
-                    TurnosService.appendLicencesToModel(aNewData, this.getView());
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    // TurnosService.appendLicencesToModel(aNewData, this.getView());
+                    this._postAgregarLicencias(TurnosService.appendLicencesToModel(aNewData, this.getView()));
+                    // FIN MOD TRNS #SistemaDeTurno-14
                     MessageBox.success("Se han agregado " + aNewData.length + " elementos correctamente.");
                 })
                 .catch((error) => {
-                    TurnosService.appendLicencesToModel(aNewData, this.getView());
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    // TurnosService.appendLicencesToModel(aNewData, this.getView());
+                    this._postAgregarLicencias(TurnosService.appendLicencesToModel(aNewData, this.getView()));
+                    // FIN MOD TRNS #SistemaDeTurno-14
                     MessageBox.success("Se han agregado " + aNewData.length + " elementos correctamente.");
                 });
         },
+
+        // INI MOD TRNS #SistemaDeTurno-14
+        // Post-proceso común de "+ Licencias" (onPressAdd) y "Agregar Licencia"
+        // (onConfirmarAgregarLicencias): las agregadas se suman al grupo de su equipo,
+        // se recolorea, se alerta si alguna pisó una fila fijada y se sincronizan las
+        // Acciones para la entrega (8-9-10).
+        _postAgregarLicencias: function (oResultado) {
+            const oLicencesModel = this.getView().getModel("LicencesJsonModel");
+            const aLicencesActuales = oLicencesModel.getData() || [];
+
+            this._rebuildFrontendGroupsByEquipo(aLicencesActuales);
+            this._assignGroupColors(aLicencesActuales);
+            oLicencesModel.refresh(true);
+
+            this._mostrarAlertasMotor(aLicencesActuales, oResultado && oResultado.alertas, null, oLicencesModel);
+            this._onTurnoModificado(null);
+        },
+        // FIN MOD TRNS #SistemaDeTurno-14
 
         // ==================== CÓDIGO CORREGIDO - POPOVER COMBO ====================
 
@@ -4626,6 +4844,11 @@ sap.ui.define([
                 return;
             }
 
+            // INI MOD TRNS #SistemaDeTurno-14
+            // P-06: el orden de pantalla se persiste (antes del filtro de cambios)
+            TurnosService.numerarOrden(aAllLicences);
+            // FIN MOD TRNS #SistemaDeTurno-14
+
             this._checkNewLicensesBeforeSave(Fecha)
                 .then((bContinue) => {
                     if (!bContinue) {
@@ -4640,7 +4863,12 @@ sap.ui.define([
                                 // INI MOD TRNS #SistemaDeTurno-12-13
                                 // || oRowData.TurnoAsignado !== oRowData._originalTurno;
                                 || oRowData.TurnoAsignado !== oRowData._originalTurno
-                                || (oRowData.Desacoplado === true) !== (oRowData._originalDesacoplado === true);
+                                // INI MOD TRNS #SistemaDeTurno-14
+                                // || (oRowData.Desacoplado === true) !== (oRowData._originalDesacoplado === true);
+                                || (oRowData.Desacoplado === true) !== (oRowData._originalDesacoplado === true)
+                                || oRowData.Orden !== oRowData._originalOrden
+                                || (oRowData.Fijado === true) !== (oRowData._originalFijado === true);
+                                // FIN MOD TRNS #SistemaDeTurno-14
                                 // FIN MOD TRNS #SistemaDeTurno-12-13
                         })
                         .forEach(function (oRowData) {
@@ -4656,7 +4884,12 @@ sap.ui.define([
                                 // INI MOD TRNS #SistemaDeTurno-12-13
                                 // Agrmanual: oRowData.Agrmanual || false
                                 Agrmanual: oRowData.Agrmanual || false,
-                                Desacoplado: oRowData.Desacoplado || false
+                                // INI MOD TRNS #SistemaDeTurno-14
+                                // Desacoplado: oRowData.Desacoplado || false
+                                Desacoplado: oRowData.Desacoplado || false,
+                                Orden: oRowData.Orden || 0,
+                                Fijado: oRowData.Fijado === true
+                                // FIN MOD TRNS #SistemaDeTurno-14
                                 // FIN MOD TRNS #SistemaDeTurno-12-13
                             };
 
@@ -4686,7 +4919,12 @@ sap.ui.define([
                                 // INI MOD TRNS #SistemaDeTurno-12-13
                                 // || oRowData.TurnoAsignado !== oRowData._originalTurno;
                                 || oRowData.TurnoAsignado !== oRowData._originalTurno
-                                || (oRowData.Desacoplado === true) !== (oRowData._originalDesacoplado === true);
+                                // INI MOD TRNS #SistemaDeTurno-14
+                                // || (oRowData.Desacoplado === true) !== (oRowData._originalDesacoplado === true);
+                                || (oRowData.Desacoplado === true) !== (oRowData._originalDesacoplado === true)
+                                || oRowData.Orden !== oRowData._originalOrden
+                                || (oRowData.Fijado === true) !== (oRowData._originalFijado === true);
+                                // FIN MOD TRNS #SistemaDeTurno-14
                                 // FIN MOD TRNS #SistemaDeTurno-12-13
                         })
                         .forEach(function (oRowData) {
@@ -4702,7 +4940,12 @@ sap.ui.define([
                                 // INI MOD TRNS #SistemaDeTurno-12-13
                                 // Agrmanual: oRowData.Agrmanual || false
                                 Agrmanual: oRowData.Agrmanual || false,
-                                Desacoplado: oRowData.Desacoplado || false
+                                // INI MOD TRNS #SistemaDeTurno-14
+                                // Desacoplado: oRowData.Desacoplado || false
+                                Desacoplado: oRowData.Desacoplado || false,
+                                Orden: oRowData.Orden || 0,
+                                Fijado: oRowData.Fijado === true
+                                // FIN MOD TRNS #SistemaDeTurno-14
                                 // FIN MOD TRNS #SistemaDeTurno-12-13
                             };
 
@@ -4734,8 +4977,17 @@ sap.ui.define([
             this.showGlobalBusy(sMensajeBusy);
 
             const oComponent = this.getOwnerComponent();
+            // INI MOD TRNS #SistemaDeTurno-14
+            // P-06: Orden y Fijado salen siempre de la pantalla, numerada en este momento
+            const aFilasModelo = this.getView().getModel("LicencesJsonModel").getData() || [];
+            TurnosService.numerarOrden(aFilasModelo);
+            const mFilasModelo = new Map(aFilasModelo.map(l => [l.Id, l]));
+            // FIN MOD TRNS #SistemaDeTurno-14
             const aPromises = licencias.map((licencia) => {
                 return new Promise((resolve, reject) => {
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    const oFilaModelo = mFilasModelo.get(licencia.Id);
+                    // FIN MOD TRNS #SistemaDeTurno-14
                     // Convertir Fecha a Date nativo si es necesario
                     let oFechaDate = licencia.Fecha;
                     if (!(oFechaDate instanceof Date)) {
@@ -4781,7 +5033,14 @@ sap.ui.define([
                         // INI MOD TRNS #SistemaDeTurno-12-13
                         // "Agrmanual": licencia.Agrmanual || false
                         "Agrmanual": licencia.Agrmanual || false,
-                        "Desacoplado": licencia.Desacoplado || false
+                        // INI MOD TRNS #SistemaDeTurno-14
+                        // "Desacoplado": licencia.Desacoplado || false
+                        "Desacoplado": licencia.Desacoplado || false,
+                        // La pantalla manda: el PUT es merge:false y los flujos de mail
+                        // mandan solo parte de las filas, con Orden que puede estar viejo.
+                        "Orden": oFilaModelo ? oFilaModelo.Orden : (licencia.Orden || 0),
+                        "Fijado": oFilaModelo ? oFilaModelo.Fijado === true : licencia.Fijado === true
+                        // FIN MOD TRNS #SistemaDeTurno-14
                         // FIN MOD TRNS #SistemaDeTurno-12-13
                     };
 
@@ -8971,7 +9230,12 @@ sap.ui.define([
                     // INI MOD TRNS #SistemaDeTurno-12-13
                     // Agrmanual: oRowData.Agrmanual || false
                     Agrmanual: oRowData.Agrmanual || false,
-                    Desacoplado: oRowData.Desacoplado || false
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    // Desacoplado: oRowData.Desacoplado || false
+                    Desacoplado: oRowData.Desacoplado || false,
+                    Orden: oRowData.Orden || 0,
+                    Fijado: oRowData.Fijado === true
+                    // FIN MOD TRNS #SistemaDeTurno-14
                     // FIN MOD TRNS #SistemaDeTurno-12-13
                 };
                 aData.push(row);
@@ -9137,7 +9401,12 @@ sap.ui.define([
                     // INI MOD TRNS #SistemaDeTurno-12-13
                     // Agrmanual: oLicense.Agrmanual || false
                     Agrmanual: oLicense.Agrmanual || false,
-                    Desacoplado: oLicense.Desacoplado || false
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    // Desacoplado: oLicense.Desacoplado || false
+                    Desacoplado: oLicense.Desacoplado || false,
+                    Orden: oLicense.Orden || 0,
+                    Fijado: oLicense.Fijado === true
+                    // FIN MOD TRNS #SistemaDeTurno-14
                     // FIN MOD TRNS #SistemaDeTurno-12-13
                 };
             });
@@ -9321,7 +9590,12 @@ sap.ui.define([
                                 // INI MOD TRNS #SistemaDeTurno-12-13
                                 // Agrmanual: oLicense.Agrmanual || false
                                 Agrmanual: oLicense.Agrmanual || false,
-                                Desacoplado: oLicense.Desacoplado || false
+                                // INI MOD TRNS #SistemaDeTurno-14
+                                // Desacoplado: oLicense.Desacoplado || false
+                                Desacoplado: oLicense.Desacoplado || false,
+                                Orden: oLicense.Orden || 0,
+                                Fijado: oLicense.Fijado === true
+                                // FIN MOD TRNS #SistemaDeTurno-14
                                 // FIN MOD TRNS #SistemaDeTurno-12-13
                             };
                         });
@@ -9927,18 +10201,23 @@ sap.ui.define([
                     });
 
                     // Agregar a la tabla
-                    TurnosService.appendLicencesToModel(aLicenciasProcesadas, this.getView());
-                    // INI MOD TRNS #SistemaDeTurno-12-13
-                    // Rearmar grupos: las agregadas se suman al grupo de su equipo
-                    const oLicencesModel = this.getView().getModel("LicencesJsonModel");
-                    const aLicencesActuales = oLicencesModel.getData() || [];
-                    this._rebuildFrontendGroupsByEquipo(aLicencesActuales);
-                    this._assignGroupColors(aLicencesActuales);
-                    oLicencesModel.refresh(true);
-                    // FIN MOD TRNS #SistemaDeTurno-12-13
-                    // INI MOD TRNS #SistemaDeTurno-8-9-10
-                    this._onTurnoModificado(null);
-                    // FIN MOD TRNS #SistemaDeTurno-8-9-10
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    // Mismo post-proceso que "+ Licencias" (_postAgregarLicencias)
+                    //
+                    // TurnosService.appendLicencesToModel(aLicenciasProcesadas, this.getView());
+                    // // INI MOD TRNS #SistemaDeTurno-12-13
+                    // // Rearmar grupos: las agregadas se suman al grupo de su equipo
+                    // const oLicencesModel = this.getView().getModel("LicencesJsonModel");
+                    // const aLicencesActuales = oLicencesModel.getData() || [];
+                    // this._rebuildFrontendGroupsByEquipo(aLicencesActuales);
+                    // this._assignGroupColors(aLicencesActuales);
+                    // oLicencesModel.refresh(true);
+                    // // FIN MOD TRNS #SistemaDeTurno-12-13
+                    // // INI MOD TRNS #SistemaDeTurno-8-9-10
+                    // this._onTurnoModificado(null);
+                    // // FIN MOD TRNS #SistemaDeTurno-8-9-10
+                    this._postAgregarLicencias(TurnosService.appendLicencesToModel(aLicenciasProcesadas, this.getView()));
+                    // FIN MOD TRNS #SistemaDeTurno-14
 
                     this.hideGlobalBusy();
 

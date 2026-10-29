@@ -397,8 +397,8 @@ sap.ui.define([
         //       alerta "antesDeInicio" si turno < inicioBloque
         //   resto:
         //       turno = max(cursor, inicioBloque, valorActual)
-        //       (empuja si hay solape, respeta lo que ya estaba más tarde, nunca adelanta;
-        //        adelantar en cascada es P-04 y va en 14a-2)
+        //       con respetarValorActual: empuja si hay solape y nunca adelanta (carga y
+        //       licencias nuevas); sin él, adelanta o atrasa (P-04, cascada al editar)
         //
         //   cursor = turno + durBloque
         //
@@ -416,8 +416,16 @@ sap.ui.define([
         //   fijos                Set de Id de licencias con turno guardado: cada una es su
         //                        propio bloque ancla
         //   respetarValorActual  incluir el valor actual en el max() de los bloques no ancla
+        //   alFijada             qué hacer con un bloque FIJADO (Fijado === true, editado a
+        //                        mano por el operador) a partir del punto de recálculo:
+        //                        "ignorar"  -> se recalcula como cualquier otro (por defecto)
+        //                        "detener"  -> P-03: no se toca y la cascada termina ahí
+        //                        "anclar"   -> no se toca y alimenta el cursor (carga y
+        //                                      licencias nuevas)
+        //                        En los dos últimos casos, si quedó pisado se alerta
+        //                        "solapeFijada" sin modificarlo.
         //
-        // Devuelve { alertas: [{ grupo, tipo, turno, minimo }] }.
+        // Devuelve { alertas: [{ consola, grupo, tipo, turno, minimo }] }.
         recalcularDesde: function (licences, oOpciones) {
             const oOpts = oOpciones || {};
             const sConsola = oOpts.consola || "";
@@ -426,13 +434,17 @@ sap.ui.define([
             const aAnclas = oOpts.anclas || [];
             const oFijos = oOpts.fijos || new Set();
             const bRespetarValor = oOpts.respetarValorActual === true;
+            const sAlFijada = oOpts.alFijada || "ignorar";
 
             const aGrupos = this._agruparPorConsola(licences, sConsola, oOpts.orden, oFijos);
             const aAlertas = [];
 
             let iCursor = iInicial;
+            let bDetenido = false;
 
             aGrupos.forEach((oGrupo, iIndex) => {
+                if (bDetenido) return;
+
                 const bAncla = oGrupo.fijo || aAnclas.indexOf(oGrupo.grupo) !== -1;
                 const iActual = this._turnoDelBloque(oGrupo.items);
 
@@ -444,6 +456,22 @@ sap.ui.define([
                     return;
                 }
 
+                // Bloque fijado por el operador (RN-03/04): su valor es la referencia
+                if (!bAncla && sAlFijada !== "ignorar" && oGrupo.fijado && iActual != null) {
+                    if (iActual < iCursor) {
+                        aAlertas.push({
+                            consola: sConsola, grupo: oGrupo.grupo, tipo: "solapeFijada",
+                            turno: iActual, minimo: iCursor
+                        });
+                    }
+                    if (sAlFijada === "detener") {
+                        bDetenido = true;
+                        return;
+                    }
+                    iCursor = iActual + oGrupo.duracion;
+                    return;
+                }
+
                 let iTurno;
 
                 if (bAncla && iActual != null) {
@@ -451,13 +479,13 @@ sap.ui.define([
 
                     if (iTurno < iCursor) {
                         aAlertas.push({
-                            grupo: oGrupo.grupo, tipo: "solape",
+                            consola: sConsola, grupo: oGrupo.grupo, tipo: "solape",
                             turno: iTurno, minimo: iCursor
                         });
                     }
                     if (oGrupo.inicio != null && iTurno < oGrupo.inicio) {
                         aAlertas.push({
-                            grupo: oGrupo.grupo, tipo: "antesDeInicio",
+                            consola: sConsola, grupo: oGrupo.grupo, tipo: "antesDeInicio",
                             turno: iTurno, minimo: oGrupo.inicio
                         });
                     }
@@ -505,6 +533,9 @@ sap.ui.define([
                 g.inicio = this._inicioBloque(g.items);
                 g.duracion = this._duracionBloque(g.items);
                 g.prioridad = this._prioridadBloque(g.items);
+                // El bloque está fijado si alguna de sus licencias lo está
+                // (se fija y se libera el bloque entero, ver _setFijadoGrupo).
+                g.fijado = g.items.some((it) => it.Fijado === true);
             });
 
             if (sOrden === "inicio") {
@@ -590,6 +621,165 @@ sap.ui.define([
             const oConTurno = (aItems || []).find((it) => !!it.TurnoAsignado);
             return oConTurno ? this._convertTimeToMinutes(oConTurno.TurnoAsignado) : null;
         },
+
+        // ---------------- ORDEN PERSISTIDO Y LICENCIAS NUEVAS (14a-2) ----------------
+
+        // P-06: Orden = posición en pantalla + 1, numeración única para todo el turno.
+        // 0 (o vacío) = sin orden: turno anterior a 14a-2 o licencia nueva.
+        numerarOrden: function (aLicences) {
+            (aLicences || []).forEach((lic, idx) => { lic.Orden = idx + 1; });
+        },
+
+        // Carga de un turno guardado con Orden: las guardadas se muestran en su orden
+        // (consola alfabética -> Orden) y las nuevas (Orden 0) se ubican por hora de
+        // inicio. Trabaja sobre el array recibido. Espera los grupos ya armados
+        // (_rebuildFrontendGroupsByEquipo). Devuelve { alertas } del motor.
+        cargarConOrden: function (aLicences) {
+            const aGuardadas = aLicences.filter((l) => Number(l.Orden) > 0);
+            const aNuevas = aLicences.filter((l) => !(Number(l.Orden) > 0));
+
+            aGuardadas.sort((a, b) => {
+                const ca = a.Consola || "", cb = b.Consola || "";
+                if (ca !== cb) return ca < cb ? -1 : 1;
+                return Number(a.Orden) - Number(b.Orden);
+            });
+
+            aLicences.length = 0;
+            aGuardadas.forEach((l) => aLicences.push(l));
+
+            return this.ubicarNuevas(aLicences, aNuevas);
+        },
+
+        // P-05: inserta licencias nuevas en aLicences (que ya está en orden de pantalla).
+        //  - Si su equipo ya está en el turno y acoplado (punto 12): se suma a ese bloque,
+        //    inmediatamente después de su última fila, con su turno y su Fijado.
+        //  - Si no: antes del primer bloque de su consola que arranca después de su hora
+        //    de inicio; turno = max(anterior + separación, inicio). Las filas de abajo
+        //    se empujan solo si quedan pisadas y las fijadas no se mueven (alerta).
+        // Devuelve { alertas } del motor.
+        ubicarNuevas: function (aLicences, aNuevas) {
+            const aAlertas = [];
+            const oSinTurno = new Set();
+            const oConsolas = new Set();
+
+            const aOrdenadas = (aNuevas || []).slice();
+            aOrdenadas.forEach((n) => {
+                if (n.InitHourSort == null) {
+                    n.InitHourSort = Utils.getInitHourSort(n);
+                }
+            });
+            aOrdenadas.sort((a, b) => {
+                const ca = a.Consola || "", cb = b.Consola || "";
+                if (ca !== cb) return ca < cb ? -1 : 1;
+                const ia = a.InitHourSort != null ? a.InitHourSort : Number.MAX_SAFE_INTEGER;
+                const ib = b.InitHourSort != null ? b.InitHourSort : Number.MAX_SAFE_INTEGER;
+                if (ia !== ib) return ia - ib;
+                return this._prioridadBloque([a]) - this._prioridadBloque([b]);
+            });
+
+            aOrdenadas.forEach((oNueva) => {
+                const sConsola = oNueva.Consola || "";
+                const sEquipo = (oNueva.Equnr || "").trim();
+
+                // Mismo equipo, acoplado, con turno (o recién ubicado en esta pasada)
+                const oMismoEquipo = (oNueva.Desacoplado !== true && sEquipo)
+                    ? aLicences.find((c) =>
+                        c.Desacoplado !== true &&
+                        (c.Consola || "") === sConsola &&
+                        (c.Equnr || "").trim() === sEquipo &&
+                        (!!c.TurnoAsignado || oSinTurno.has(c)))
+                    : null;
+
+                if (oMismoEquipo) {
+                    const sGrupo = oMismoEquipo.Grupo;
+                    const aBloque = aLicences.filter((c) =>
+                        (c.Consola || "") === sConsola && c.Grupo === sGrupo);
+
+                    oNueva.Grupo = sGrupo;
+                    oNueva.TurnoAsignado = oMismoEquipo.TurnoAsignado || "";
+                    oNueva.Fijado = aBloque.some((c) => c.Fijado === true);
+
+                    const iUltima = aLicences.indexOf(aBloque[aBloque.length - 1]);
+                    aLicences.splice(iUltima + 1, 0, oNueva);
+
+                    if (!oNueva.TurnoAsignado) {
+                        oSinTurno.add(oNueva);
+                        oConsolas.add(sConsola);
+                    }
+                    return;
+                }
+
+                oNueva.TurnoAsignado = "";
+                oNueva.Fijado = false;
+                aLicences.splice(this._indiceInsercion(aLicences, oNueva), 0, oNueva);
+                oSinTurno.add(oNueva);
+                oConsolas.add(sConsola);
+            });
+
+            // Motor desde el primer bloque con una nueva sin turno, en modo empuje
+            oConsolas.forEach((sConsola) => {
+                const aGrupos = this._agruparPorConsola(aLicences, sConsola, "visual", null);
+                const iDesde = aGrupos.findIndex((g) => g.items.some((it) => oSinTurno.has(it)));
+                if (iDesde === -1) return;
+
+                const oRes = this.recalcularDesde(aLicences, {
+                    consola: sConsola,
+                    desdeGrupo: iDesde,
+                    orden: "visual",
+                    anclas: [],
+                    respetarValorActual: true,
+                    alFijada: "anclar"
+                });
+                oRes.alertas.forEach((a) => aAlertas.push(a));
+            });
+
+            return { alertas: aAlertas };
+        },
+
+        // Posición de una licencia nueva: antes del primer bloque de su consola cuya hora
+        // (o, si todavía no tiene, su hora de inicio) es POSTERIOR a la hora de inicio de
+        // la nueva. Sin ninguno, al final de su consola; consola nueva, en su lugar
+        // alfabético.
+        _indiceInsercion: function (aLicences, oNueva) {
+            const sConsola = oNueva.Consola || "";
+            const iInicioNueva = oNueva.InitHourSort != null ? oNueva.InitHourSort : Number.MAX_SAFE_INTEGER;
+
+            let iUltimaConsola = -1;
+            let iPrimeraConsolaMayor = -1;
+
+            for (let i = 0; i < aLicences.length; i++) {
+                const oLic = aLicences[i];
+                const sCons = oLic.Consola || "";
+
+                if (sCons !== sConsola) {
+                    if (sCons > sConsola && iPrimeraConsolaMayor === -1 && iUltimaConsola === -1) {
+                        iPrimeraConsolaMayor = i;
+                    }
+                    continue;
+                }
+                iUltimaConsola = i;
+
+                // Solo se compara al comienzo de cada bloque: nunca se parte un bloque
+                const oAnterior = aLicences[i - 1];
+                const bInicioBloque = !oAnterior ||
+                    (oAnterior.Consola || "") !== sConsola ||
+                    oAnterior.Grupo !== oLic.Grupo;
+                if (!bInicioBloque) continue;
+
+                const aBloque = aLicences.filter((c) =>
+                    (c.Consola || "") === sConsola && c.Grupo === oLic.Grupo);
+                const iTurno = this._turnoDelBloque(aBloque);
+                const iClave = iTurno != null ? iTurno : this._inicioBloque(aBloque);
+
+                if (iClave != null && iClave > iInicioNueva) {
+                    return i;
+                }
+            }
+
+            if (iUltimaConsola !== -1) return iUltimaConsola + 1;
+            if (iPrimeraConsolaMayor !== -1) return iPrimeraConsolaMayor;
+            return aLicences.length;
+        },
         // FIN MOD TRNS #SistemaDeTurno-14
 
         _formatTime: function (iMinutes) {
@@ -641,44 +831,60 @@ sap.ui.define([
                     // INI MOD TRNS #SistemaDeTurno-12-13
                     copia.Desacoplado = false;
 
-                    // Si su equipo ya está en el turno (acoplado y con hora), se suma a ese grupo:
-                    // se copian Grupo y TurnoAsignado, no se calcula nada.
-                    const sEquipo = (copia.Equnr || "").trim();
-                    const oMismoEquipo = sEquipo && aCurrent.find(c =>
-                        c.Desacoplado !== true &&
-                        (c.Equnr || "").trim() === sEquipo &&
-                        c.TurnoAsignado
-                    );
-                    if (oMismoEquipo) {
-                        copia.Grupo = oMismoEquipo.Grupo;
-                        copia.TurnoAsignado = oMismoEquipo.TurnoAsignado;
-                    }
+                    // INI MOD TRNS #SistemaDeTurno-14
+                    // El acople al bloque de su equipo lo resuelve ahora ubicarNuevas,
+                    // que además deja la fila contigua al bloque (RN-02: ya no se reordena).
+                    //
+                    // // Si su equipo ya está en el turno (acoplado y con hora), se suma a ese grupo:
+                    // // se copian Grupo y TurnoAsignado, no se calcula nada.
+                    // const sEquipo = (copia.Equnr || "").trim();
+                    // const oMismoEquipo = sEquipo && aCurrent.find(c =>
+                    //     c.Desacoplado !== true &&
+                    //     (c.Equnr || "").trim() === sEquipo &&
+                    //     c.TurnoAsignado
+                    // );
+                    // if (oMismoEquipo) {
+                    //     copia.Grupo = oMismoEquipo.Grupo;
+                    //     copia.TurnoAsignado = oMismoEquipo.TurnoAsignado;
+                    // }
+                    copia.Fijado = false;
+                    copia.Orden = 0;
+                    // FIN MOD TRNS #SistemaDeTurno-14
                     // FIN MOD TRNS #SistemaDeTurno-12-13
 
                     return copia;
                 });
 
-            aToInsert.forEach(lic => {
-                const consola = lic.Consola || "";
-
-                let insertIndex = -1;
-                for (let i = aCurrent.length - 1; i >= 0; i--) {
-                    if (aCurrent[i].Consola === consola) {
-                        insertIndex = i + 1;
-                        break;
-                    }
-                }
-
-                if (insertIndex === -1) {
-                    aCurrent.push(lic);
-                } else {
-                    aCurrent.splice(insertIndex, 0, lic);
-                }
-            });
+            // INI MOD TRNS #SistemaDeTurno-14
+            // P-05: ubicación por hora de inicio y turno calculado (antes quedaba al final
+            // de la consola y sin turno, salvo que se sumara al bloque de su equipo).
+            //
+            // aToInsert.forEach(lic => {
+            //     const consola = lic.Consola || "";
+            //
+            //     let insertIndex = -1;
+            //     for (let i = aCurrent.length - 1; i >= 0; i--) {
+            //         if (aCurrent[i].Consola === consola) {
+            //             insertIndex = i + 1;
+            //             break;
+            //         }
+            //     }
+            //
+            //     if (insertIndex === -1) {
+            //         aCurrent.push(lic);
+            //     } else {
+            //         aCurrent.splice(insertIndex, 0, lic);
+            //     }
+            // });
+            const oResultado = this.ubicarNuevas(aCurrent, aToInsert);
+            // FIN MOD TRNS #SistemaDeTurno-14
             Utils.onCountItems(oView, aCurrent)
             oLicencesModel.setData(aCurrent);
 
             oLicencesModel.refresh(true);
+            // INI MOD TRNS #SistemaDeTurno-14
+            return oResultado;
+            // FIN MOD TRNS #SistemaDeTurno-14
         },
 
         validarEstadosAntesDeGuardar: function (aLicenciasEnPantalla, oDataModel) {

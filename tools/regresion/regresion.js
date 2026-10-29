@@ -3,6 +3,8 @@
 //
 // #SistemaDeTurno-12-13 : acople por defecto (una hora por bloque, filas contiguas)
 // #SistemaDeTurno-14    : motor único, RN-01, separación por mayor duración, RN-07
+//                         14a-2: RN-02, Fijado (RN-03/04, P-03, P-04, P-07), Orden (P-06),
+//                         licencias nuevas por hora de inicio (P-05), desacople en su lugar
 const { loadModule } = require("./harness");
 
 const Svc = loadModule("transener/sistemadeturnos/services/TurnosService");
@@ -222,7 +224,9 @@ console.log("\n=== 5. Alertas solo ante conflicto real (RN-07) ===");
         res.alertas.some(a => a.tipo === "solape") && res.alertas.some(a => a.tipo === "antesDeInicio"));
 }
 
-console.log("\n=== 6. Grupos posteriores: empujar sí, adelantar no ===");
+// Modo "empuje" del motor (respetarValorActual): lo usan la carga y las licencias
+// nuevas (P-05). La cascada al editar adelanta (P-04), ver escenario 16.
+console.log("\n=== 6. Modo empuje (carga / licencias nuevas): empujar sí, adelantar no ===");
 {
     const base = () => [
         lic("L-A", "EQ-A", "1AC", hhmm(7), "equipo30", { TurnoAsignado: "07:00" }),
@@ -245,7 +249,7 @@ console.log("\n=== 6. Grupos posteriores: empujar sí, adelantar no ===");
     console.log("  6a empuje   : " + horas(d));
     check("A mantiene 10:00 (ancla)", d.find(l => l.Id === "L-A").TurnoAsignado === "10:00");
     check("B empujada a 10:30", d.find(l => l.Id === "L-B").TurnoAsignado === "10:30");
-    check("C NO se adelanta: sigue en 16:00 (P-04 va en 14a-2)",
+    check("C NO se adelanta en modo empuje: sigue en 16:00",
         d.find(l => l.Id === "L-C").TurnoAsignado === "16:00");
     check("ningún posterior alerta", res.alertas.length === 0);
 
@@ -432,6 +436,326 @@ console.log("\n=== 12. Invariantes sobre set grande ===");
         }
     }
     check("separación >= mayor duración del bloque anterior", okSep);
+}
+
+// ======================= 14a-2 =======================
+
+const ids = (a) => a.map(l => l.Id).join(",");
+const t = (a, id) => a.find(l => l.Id === id).TurnoAsignado;
+const L = (a, id) => a.find(l => l.Id === id);
+
+// Núcleo de onChangeHour con hora válida (sin modelo ni TimePicker)
+function editar(a, id, hora) {
+    const oLic = L(a, id);
+    Ctrl._updateSameGroupAndConsoleShifts(a, oLic, hora);
+    Ctrl._setFijadoGrupo(a, oLic, true);
+    return Ctrl._recalcularDesde(a, a.indexOf(oLic), null);
+}
+// Núcleo de onChangeHour con el campo vaciado
+function vaciar(a, id) {
+    const oLic = L(a, id);
+    return Ctrl._recalculateEmptyShift(a, oLic, a.indexOf(oLic));
+}
+// Pantalla, turno guardado (successSelectTurno)
+const FECHA = new Date(Date.UTC(2026, 9, 29));
+const nav = (turno) => ({ results: [{ Dateturno: FECHA, Turno: turno, Comentarios: "", Agrmanual: false, Desacoplado: false }] });
+function flujoCargaGuardada(data) {
+    const a = Svc.ordenarPorEqunr(clone(data));
+    const mGuardado = {};
+    a.forEach(l => { if (l.TurnosLicencias_nav) mGuardado[l.Id] = l.TurnosLicencias_nav.results[0].Turno; });
+    Svc.assignShiftsToLicences(a);
+    a.forEach(l => { if (mGuardado[l.Id]) l.TurnoAsignado = mGuardado[l.Id]; }); // turnosOriginales
+    Ctrl._rebuildFrontendGroupsByEquipo(a);
+    let alertas = [];
+    if (a.some(l => Number(l.Orden) > 0)) {
+        alertas = Svc.cargarConOrden(a).alertas;
+    } else {
+        Ctrl._sortLicences(a);
+    }
+    return { a, alertas };
+}
+// Pantalla ya armada: una fila por bloque salvo que se indique Grupo
+const fila = (Id, Equnr, inicio, cat, turno, extra) =>
+    lic(Id, Equnr, "1AC", inicio, cat, Object.assign({ TurnoAsignado: turno, Grupo: "solo_" + Id }, extra || {}));
+
+console.log("\n=== 13. RN-02: editar no reordena ===");
+{
+    const d = [
+        fila("A", "EQ-A", hhmm(7), "equipo30", "07:00"),
+        fila("B", "EQ-B", hhmm(7), "sin10", "07:30"),
+        fila("C", "EQ-C", hhmm(7), "sin10", "07:40")
+    ];
+    const antes = ids(d);
+    const aWarn = editar(d, "C", "07:10");
+    console.log("  " + horas(d));
+    check("C editada antes que B: el orden no cambia", ids(d) === antes, ids(d));
+    check("C conserva 07:10 y alerta solape", t(d, "C") === "07:10" && aWarn.length === 1 && aWarn[0].Id === "C");
+}
+
+console.log("\n=== 14. RN-03/04: valor fijado y recálculo solo de las posteriores ===");
+{
+    const d = [
+        fila("A", "EQ-A", hhmm(7), "equipo30", "07:00"),
+        fila("B", "EQ-B", hhmm(7), "sin10", "07:30"),
+        fila("C", "EQ-C", hhmm(7), "sin10", "07:40"),
+        fila("D", "EQ-D", hhmm(7), "sin10", "07:50")
+    ];
+    editar(d, "B", "09:00");
+    console.log("  " + horas(d));
+    check("B queda en 09:00 y fijada", t(d, "B") === "09:00" && L(d, "B").Fijado === true);
+    check("A (anterior) no cambia ni se fija", t(d, "A") === "07:00" && L(d, "A").Fijado !== true);
+    check("C y D se recalculan: 09:10 / 09:20", t(d, "C") === "09:10" && t(d, "D") === "09:20");
+
+    // Bloque acoplado: se fija entero
+    const g = [
+        fila("A", "EQ-A", hhmm(7), "sin10", "07:00"),
+        fila("G1", "EQ-G", hhmm(7), "sin10", "07:10", { Grupo: "grp_EQ-G" }),
+        fila("G2", "EQ-G", hhmm(8), "sin10", "07:10", { Grupo: "grp_EQ-G" })
+    ];
+    editar(g, "G2", "10:00");
+    check("bloque acoplado: las dos filas en 10:00 y fijadas",
+        t(g, "G1") === "10:00" && t(g, "G2") === "10:00" && L(g, "G1").Fijado && L(g, "G2").Fijado);
+}
+
+console.log("\n=== 15. P-03: la cascada se detiene en la siguiente fijada ===");
+{
+    const base = (turnoC) => [
+        fila("A", "EQ-A", hhmm(7), "equipo30", "07:00"),
+        fila("B", "EQ-B", hhmm(7), "sin10", "07:30"),
+        fila("C", "EQ-C", hhmm(7), "sin10", turnoC, { Fijado: true }),
+        fila("D", "EQ-D", hhmm(7), "sin10", "07:50")
+    ];
+    let d = base("07:40");
+    let aWarn = editar(d, "A", "08:00");
+    console.log("  15a choque : " + horas(d));
+    check("B empujada a 08:30", t(d, "B") === "08:30");
+    check("C fijada NO se modifica (07:40)", t(d, "C") === "07:40");
+    check("C pisada: alerta sin modificarla", aWarn.some(it => it.Id === "C"));
+    check("D, después de la fijada, no se toca", t(d, "D") === "07:50");
+
+    d = base("10:00");
+    aWarn = editar(d, "A", "08:00");
+    console.log("  15b hueco  : " + horas(d));
+    check("C fijada sin choque: no alerta", !aWarn.some(it => it.Id === "C") && t(d, "C") === "10:00");
+}
+
+console.log("\n=== 16. P-04: la cascada adelanta en ambos sentidos, respetando RN-01 ===");
+{
+    const d = [
+        fila("A", "EQ-A", hhmm(7), "equipo30", "08:00"),
+        fila("B", "EQ-B", hhmm(7), "sin10", "09:00"),
+        fila("C", "EQ-C", hhmm(11), "sin10", "11:00"),
+        fila("D", "EQ-D", hhmm(7), "sin10", "13:00")
+    ];
+    editar(d, "A", "07:15");
+    console.log("  " + horas(d));
+    check("B se adelanta a 07:45", t(d, "B") === "07:45");
+    check("C no baja de su hora de inicio (11:00)", t(d, "C") === "11:00");
+    check("D se adelanta a 11:10", t(d, "D") === "11:10");
+    check("solo A queda fijada", d.filter(l => l.Fijado).map(l => l.Id).join() === "A");
+}
+
+console.log("\n=== 17. P-07: borrar la hora libera la fila ===");
+{
+    const d = [
+        fila("A", "EQ-A", hhmm(7), "equipo30", "07:00"),
+        fila("B", "EQ-B", hhmm(7), "sin10", "09:00", { Fijado: true }),
+        fila("C", "EQ-C", hhmm(7), "sin10", "09:10"),
+        fila("D", "EQ-D", hhmm(7), "sin10", "12:00", { Fijado: true }),
+        fila("E", "EQ-E", hhmm(7), "sin10", "12:10")
+    ];
+    vaciar(d, "B");
+    console.log("  " + horas(d));
+    check("B deja de estar fijada", L(d, "B").Fijado === false);
+    check("B vuelve al cálculo: max(cursor, inicio) = 07:30", t(d, "B") === "07:30");
+    check("C se adelanta a 07:40", t(d, "C") === "07:40");
+    check("D fijada no se toca y E tampoco", t(d, "D") === "12:00" && t(d, "E") === "12:10");
+}
+
+console.log("\n=== 18. P-06: el orden y las fijadas se mantienen al recargar ===");
+{
+    const d = [
+        lic("X1", "EQ-1", "1AC", hhmm(7), "sin10", { Orden: 3, TurnosLicencias_nav: nav("09:00") }),
+        lic("X2", "EQ-2", "1AC", hhmm(7), "sin10", { Orden: 1, Fijado: true, TurnosLicencias_nav: nav("08:00") }),
+        lic("X3", "EQ-3", "1AC", hhmm(7), "sin10", { Orden: 2, TurnosLicencias_nav: nav("07:30") })
+    ];
+    const { a, alertas } = flujoCargaGuardada(d);
+    console.log("  " + horas(a));
+    check("se muestra por Orden (X2, X3, X1), no por hora", ids(a) === "X2,X3,X1", ids(a));
+    check("sin licencias nuevas no se recalcula nada (horas = guardadas)",
+        t(a, "X1") === "09:00" && t(a, "X2") === "08:00" && t(a, "X3") === "07:30");
+    check("Fijado se conserva", L(a, "X2").Fijado === true && L(a, "X1").Fijado !== true);
+    check("sin alertas", alertas.length === 0);
+}
+
+console.log("\n=== 19. P-05: licencia nueva al recargar, por hora de inicio ===");
+{
+    const base = (catS8, catN, fijS9) => [
+        lic("S8", "EQ-1", "1AC", hhmm(8), catS8, { Orden: 1, TurnosLicencias_nav: nav("08:00") }),
+        lic("S9", "EQ-2", "1AC", hhmm(9), "sin10", { Orden: 2, Fijado: fijS9, TurnosLicencias_nav: nav("09:00") }),
+        lic("S10", "EQ-3", "1AC", hhmm(10), "sin10", { Orden: 3, TurnosLicencias_nav: nav("10:00") }),
+        lic("N", "EQ-N", "1AC", hhmm(8, 30), catN)
+    ];
+    let r = flujoCargaGuardada(base("sin10", "sin10", false));
+    console.log("  19a        : " + horas(r.a));
+    check("la nueva (08:30) queda entre la de 08:00 y la de 09:00", ids(r.a) === "S8,N,S9,S10", ids(r.a));
+    check("turno = max(anterior + separación, inicio) = 08:30", t(r.a, "N") === "08:30");
+    check("las demás no cambian", t(r.a, "S9") === "09:00" && t(r.a, "S10") === "10:00");
+
+    r = flujoCargaGuardada(base("linea45", "linea45", false));
+    console.log("  19b empuje : " + horas(r.a));
+    check("N = 08:45 (08:00 + 45')", t(r.a, "N") === "08:45");
+    check("S9 pisada se empuja a 09:30", t(r.a, "S9") === "09:30");
+    check("S10 no pisada no se mueve", t(r.a, "S10") === "10:00");
+
+    r = flujoCargaGuardada(base("linea45", "linea45", true));
+    console.log("  19c fijada : " + horas(r.a));
+    check("S9 fijada no se mueve aunque quede pisada", t(r.a, "S9") === "09:00");
+    check("alerta solapeFijada", r.alertas.some(x => x.tipo === "solapeFijada"));
+    check("S10 sigue en 10:00", t(r.a, "S10") === "10:00");
+}
+
+console.log("\n=== 20. P-05: la nueva se suma al bloque de su equipo ===");
+{
+    const base = (fij) => [
+        lic("S8", "EQ-A", "1AC", hhmm(8), "sin10", { Orden: 1, Fijado: fij, TurnosLicencias_nav: nav("08:00") }),
+        lic("S9", "EQ-B", "1AC", hhmm(9), "sin10", { Orden: 2, TurnosLicencias_nav: nav("09:00") }),
+        lic("N", "EQ-A", "1AC", hhmm(9, 30), "sin10")
+    ];
+    let r = flujoCargaGuardada(base(false));
+    console.log("  " + horas(r.a));
+    check("contigua a su bloque (S8, N, S9)", ids(r.a) === "S8,N,S9", ids(r.a));
+    check("toma el turno del bloque (08:00) y su grupo",
+        t(r.a, "N") === "08:00" && L(r.a, "N").Grupo === L(r.a, "S8").Grupo);
+    check("bloque sin fijar: N sin fijar", L(r.a, "N").Fijado === false);
+    r = flujoCargaGuardada(base(true));
+    check("bloque fijado: N queda fijada también", L(r.a, "N").Fijado === true);
+}
+
+console.log("\n=== 21. \"+ Licencias\": varias nuevas y consola nueva ===");
+{
+    const pantalla = () => [
+        fila("P8", "EQ-1", hhmm(8), "sin10", "08:00"),
+        fila("P9", "EQ-2", hhmm(9), "sin10", "09:00"),
+        lic("Z1", "EQ-Z", "2BC", hhmm(7), "sin10", { TurnoAsignado: "07:00", Grupo: "solo_Z1" })
+    ];
+    // Lo que arma appendLicencesToModel antes de ubicarlas
+    const nueva = (Id, Equnr, Consola, inicio) =>
+        lic(Id, Equnr, Consola, inicio, "sin10", { Grupo: "_Desacoplado_" + Id, Desacoplado: false, Fijado: false, Orden: 0 });
+
+    const d = pantalla();
+    Svc.ubicarNuevas(d, [nueva("N30", "EQ-N30", "1AC", hhmm(8, 30)), nueva("N20", "EQ-N20", "1AC", hhmm(8, 20)),
+        nueva("B1", "EQ-B1", "1BB", hhmm(10))]);
+    console.log("  " + horas(d));
+    check("quedan en orden de inicio: P8, N20, N30, P9", ids(d.filter(l => l.Consola === "1AC")) === "P8,N20,N30,P9");
+    check("N20 = 08:20, N30 = 08:30", t(d, "N20") === "08:20" && t(d, "N30") === "08:30");
+    check("consola nueva 1BB entre 1AC y 2BC", JSON.stringify(d.map(l => l.Consola)) === JSON.stringify(["1AC", "1AC", "1AC", "1AC", "1BB", "2BC"]));
+    check("1BB: turno = su hora de inicio (10:00)", t(d, "B1") === "10:00");
+    check("2BC no se toca", t(d, "Z1") === "07:00");
+}
+
+console.log("\n=== 22. Turno guardado antes de 14a-2 (sin Orden ni Fijado) ===");
+{
+    const d = [
+        lic("P1", "EQ-A", "1AC", hhmm(8), "sin10", { TurnosLicencias_nav: nav("08:00") }),
+        lic("P2", "EQ-B", "1AC", hhmm(9), "sin10", { TurnosLicencias_nav: nav("09:00") }),
+        lic("P3", "EQ-A", "1AC", hhmm(10), "sin10", { TurnosLicencias_nav: nav("08:00") }),
+        lic("P4", "EQ-C", "1AC", hhmm(11), "sin10", { TurnosLicencias_nav: nav("11:00") })
+    ];
+    const { a } = flujoCargaGuardada(d);
+    const e = flujoPantallaExistente(d);
+    console.log("  " + horas(a));
+    check("igual que 14a-1 (orden y horas)", ids(a) === ids(e) && horas(a) === horas(e), horas(e));
+    a.forEach(l => { l._originalOrden = Number(l.Orden) || 0; });
+    Svc.numerarOrden(a);
+    check("el primer guardado migra: todas las filas cambian de Orden",
+        a.every(l => l.Orden !== l._originalOrden) && ids(a) === ids(e));
+}
+
+console.log("\n=== 23. Varias consolas y licencias eliminadas ===");
+{
+    const d = [
+        fila("A1", "EQ-A1", hhmm(7), "sin10", "07:00"),
+        fila("A2", "EQ-A2", hhmm(7), "sin10", "07:10"),
+        lic("B1", "EQ-B1", "2BC", hhmm(7), "sin10", { TurnoAsignado: "07:00", Grupo: "solo_B1" }),
+        lic("B2", "EQ-B2", "2BC", hhmm(7), "sin10", { TurnoAsignado: "07:10", Grupo: "solo_B2" })
+    ];
+    editar(d, "A1", "09:00");
+    check("la cascada de 1AC no toca 2BC", t(d, "A2") === "09:10" && t(d, "B1") === "07:00" && t(d, "B2") === "07:10");
+    d.splice(1, 1); // onDeletePress
+    Svc.numerarOrden(d);
+    check("eliminada: Orden 1..n sin huecos y el resto conserva su orden",
+        d.map(l => l.Orden).join() === "1,2,3" && ids(d) === "A1,B1,B2");
+}
+
+console.log("\n=== 24. Desacoplar en su lugar (Figura 4) ===");
+{
+    const base = (fij) => [
+        fila("V1", "EM-VSINC", hhmm(8), "sin10", "08:00", { Grupo: "grp_EM-VSINC", Fijado: fij }),
+        fila("V2", "EM-VSINC", hhmm(9), "sin10", "08:00", { Grupo: "grp_EM-VSINC", Fijado: fij }),
+        fila("V3", "EM-VSINC", hhmm(10), "sin10", "08:00", { Grupo: "grp_EM-VSINC", Fijado: fij }),
+        fila("B", "EQ-B", hhmm(7), "sin10", "08:10"),
+        fila("C", "EQ-C", hhmm(7), "sin10", "12:00", { Fijado: true }),
+        fila("D", "EQ-D", hhmm(7), "sin10", "12:10")
+    ];
+    const desacoplar = (a, id) => {
+        const i = a.findIndex(l => l.Id === id);
+        const oLic = a.splice(i, 1)[0];   // onDetachLicense
+        return Ctrl._desacoplarEnLugar(a, oLic, i);
+    };
+
+    const d = base(false);
+    desacoplar(d, "V2");
+    console.log("  24a V2     : " + horas(d));
+    check("V2 queda inmediatamente después de su bloque", ids(d) === "V1,V3,V2,B,C,D", ids(d));
+    check("V2: desacoplada, sin fijar, grupo propio",
+        L(d, "V2").Desacoplado === true && L(d, "V2").Fijado === false && L(d, "V2").Grupo === "_Desacoplado_V2");
+    check("V2 = max(cursor 08:10, inicio 09:00) = 09:00", t(d, "V2") === "09:00");
+    check("la cascada sigue: B 09:10", t(d, "B") === "09:10");
+    check("se detiene en la fijada: C 12:00 y D 12:10 sin tocar", t(d, "C") === "12:00" && t(d, "D") === "12:10");
+
+    desacoplar(d, "V3");
+    console.log("  24b V3     : " + horas(d));
+    check("las desacopladas quedan consecutivas en el orden en que se desacoplaron", ids(d) === "V1,V2,V3,B,C,D", ids(d));
+    check("V3 = 10:00 (su inicio) y B 10:10", t(d, "V3") === "10:00" && t(d, "B") === "10:10");
+
+    const f = base(true);
+    desacoplar(f, "V2");
+    check("bloque fijado: la desacoplada queda sin fijar y el resto sigue fijado",
+        L(f, "V2").Fijado === false && L(f, "V1").Fijado === true && L(f, "V3").Fijado === true);
+    check("bloque fijado: el resto conserva 08:00", t(f, "V1") === "08:00" && t(f, "V3") === "08:00");
+}
+
+console.log("\n=== 25. Invariantes con ediciones al azar ===");
+{
+    const eq = ["EQ-A", "EQ-B", "EQ-C", "EQ-D", "EQ-E", "EQ-F"];
+    const cat = ["sin10", "equipo30", "linea45"];
+    const d0 = [];
+    for (let i = 0; i < 30; i++) {
+        d0.push(lic("L" + i, eq[(i * 7) % eq.length], i % 2 ? "1AC" : "2BC",
+            hhmm(7 + (i % 10), (i % 4) * 15), cat[i % 3]));
+    }
+    const d = flujoPantallaNuevo(d0);
+    let seed = 12345;
+    const rnd = (n) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+
+    let okOrden = true, okFijadas = true, okRn01 = true;
+    const orden = ids(d);
+    for (let k = 0; k < 60; k++) {
+        const oLic = d[rnd(d.length)];
+        const mFijadas = {};
+        d.forEach(l => { if (l.Fijado && !(l.Consola === oLic.Consola && l.Grupo === oLic.Grupo)) mFijadas[l.Id] = l.TurnoAsignado; });
+        if (rnd(5) === 0) { vaciar(d, oLic.Id); }
+        else { editar(d, oLic.Id, Svc._formatTime(hhmm(7 + rnd(9), rnd(4) * 15))); }
+
+        if (ids(d) !== orden) okOrden = false;
+        Object.keys(mFijadas).forEach(id => { if (t(d, id) !== mFijadas[id]) okFijadas = false; });
+        const noFijadas = d.filter(l => !l.Fijado);
+        if (!rn01PorBloque(noFijadas)) okRn01 = false;
+    }
+    check("60 ediciones: el orden de las filas nunca cambia", okOrden);
+    check("ninguna fila fijada cambia salvo la que se edita", okFijadas);
+    check("RN-01 en todos los bloques no fijados", okRn01);
 }
 
 console.log("\n==================================================");
