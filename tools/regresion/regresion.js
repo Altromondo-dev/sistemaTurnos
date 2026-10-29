@@ -19,6 +19,24 @@ const horas = (a) => a.map(l => l.Id + "=" + l.TurnoAsignado).join(" ");
 const map = (a) => a.reduce((m, l) => (m[l.Id] = l.TurnoAsignado, m), {});
 const hhmm = (h, m) => h * 60 + (m || 0);
 
+// RN-01 a nivel de BLOQUE: el turno de un bloque no puede ser anterior a la hora de
+// inicio de su primera licencia (criterio mínimo de _inicioBloque, Figura 10).
+// Ojo: NO vale por licencia — dentro de un bloque acoplado, las que empiezan más
+// tarde quedan con un turno anterior a su propia hora de inicio. Es lo esperado.
+function rn01PorBloque(aLicences) {
+    const mBloques = {};
+    aLicences.forEach(l => {
+        const k = (l.Consola || "") + "|" + (l.Grupo || l.Equnr || "");
+        (mBloques[k] = mBloques[k] || []).push(l);
+    });
+    return Object.keys(mBloques).every(k => {
+        const items = mBloques[k];
+        const inicios = items.map(x => x.InitHourSort).filter(x => x != null);
+        if (!inicios.length) return true;
+        return Svc._convertTimeToMinutes(items[0].TurnoAsignado) >= Math.min(...inicios);
+    });
+}
+
 // --- Flujos de la app ---
 // Pantalla, turno NUEVO
 function flujoPantallaNuevo(data) {
@@ -86,9 +104,9 @@ console.log("\n=== 1. Caso QAS 29.10.2026 (RN-01) ===");
     const r = flujoPantallaNuevo(d);
     console.log("  " + horas(r));
     const deh = r.filter(l => l.Equnr === "1AC-DEH1");
+    check("bloque 1AC-DEH1 -> 08:00 (hora de inicio de su primera licencia)",
+        deh.every(l => l.TurnoAsignado === "08:00"), horas(r));
     check("1AC-BVI1 -> 10:00", r.find(l => l.Equnr === "1AC-BVI1").TurnoAsignado === "10:00");
-    check("bloque 1AC-DEH1 -> 12:00 (hora de inicio más tardía)",
-        deh.every(l => l.TurnoAsignado === "12:00"), horas(r));
     const idx = r.map((l, i) => l.Equnr === "1AC-DEH1" ? i : -1).filter(i => i >= 0);
     check("1AC-DEH1: 4 filas contiguas",
         idx.length === 4 && idx[3] - idx[0] === 3, "indices " + idx);
@@ -105,15 +123,13 @@ console.log("\n=== 2. Caso QAS original de 3 licencias (acople #12-13 + RN-01) =
     const r = flujoPantallaNuevo(d);
     console.log("  " + horas(r));
     const deh = r.filter(l => l.Equnr === "1AC-DEH1");
-    // Ambos bloques arrancan a las 10:00: desempata la prioridad de categoría (igual)
-    // y después el orden original, donde 1AC-DEH1 va primero.
-    check("1AC-DEH1: las dos en 10:00", deh.every(l => l.TurnoAsignado === "10:00"));
+    check("1AC-DEH1: las dos en 08:00", deh.every(l => l.TurnoAsignado === "08:00"));
     check("1AC-DEH1: filas contiguas", Math.abs(r.indexOf(deh[0]) - r.indexOf(deh[1])) === 1);
-    check("1AC-BVI1 -> 10:10 (empujada por el bloque anterior)",
-        r.find(l => l.Equnr === "1AC-BVI1").TurnoAsignado === "10:10");
+    check("1AC-BVI1 -> 10:00 (su hora de inicio, no el cursor 08:10)",
+        r.find(l => l.Equnr === "1AC-BVI1").TurnoAsignado === "10:00");
 }
 
-console.log("\n=== 3. RN-01: ninguna licencia antes de su hora de inicio ===");
+console.log("\n=== 3. RN-01: ningún bloque antes de su hora de inicio ===");
 {
     // Ejemplo del diseño: L-A 07:00 (30'), L-B 08:00 (10'), L-C 13:00 (45')
     const d = [
@@ -127,29 +143,31 @@ console.log("\n=== 3. RN-01: ninguna licencia antes de su hora de inicio ===");
     check("L-A -> 07:00 (cursor manda)", m["L-A"] === "07:00");
     check("L-B -> 08:00 (hora de inicio manda sobre cursor 07:30)", m["L-B"] === "08:00");
     check("L-C -> 13:00 (hora de inicio manda sobre cursor 08:10)", m["L-C"] === "13:00");
-    check("ninguna antes de su hora de inicio",
-        r.every(l => Svc._convertTimeToMinutes(l.TurnoAsignado) >= l.InitHourSort), horas(r));
+    check("ningún bloque antes de su hora de inicio", rn01PorBloque(r), horas(r));
 }
 
 console.log("\n=== 4. Bloque mixto: separación = MAYOR duración del bloque ===");
 {
-    // L-B (10') y L-C (45') comparten equipo -> bloque inicio 13:00, duración 45'
+    // L-B (08:00, 10') y L-C (13:00, 45') comparten equipo
+    //   -> bloque inicio 08:00 (el mínimo), duración 45' (la mayor)
+    // L-E arranca 08:00 también, así que su turno lo fija la separación del bloque
+    // anterior: 08:00 + 45' = 08:45. Con la regla vieja (items[0] = 10') daría 08:10.
     const d = [
         lic("L-A", "EQ-A", "1AC", hhmm(7), "equipo30"),
         lic("L-B", "EQ-BC", "1AC", hhmm(8), "sin10"),
         lic("L-C", "EQ-BC", "1AC", hhmm(13), "linea45"),
         lic("L-D", "EQ-D", "1AC", hhmm(7), "sin10"),
-        lic("L-E", "EQ-E", "1AC", hhmm(13), "sin10")
+        lic("L-E", "EQ-E", "1AC", hhmm(8), "sin10")
     ];
     const r = flujoPantallaNuevo(d);
     console.log("  " + horas(r));
     const m = map(r);
     check("L-A -> 07:00", m["L-A"] === "07:00");
     check("L-D -> 07:30 (desempate por prioridad de categoría)", m["L-D"] === "07:30");
-    check("bloque {L-B, L-C} -> 13:00 (inicio más tardío del bloque)",
-        m["L-B"] === "13:00" && m["L-C"] === "13:00");
-    check("L-E -> 13:45: separación 45' (la mayor), no 10' de items[0]",
-        m["L-E"] === "13:45", "L-E=" + m["L-E"]);
+    check("bloque {L-B, L-C} -> 08:00 (inicio de su primera licencia)",
+        m["L-B"] === "08:00" && m["L-C"] === "08:00");
+    check("L-E -> 08:45: separación 45' (la mayor), no 10' de items[0]",
+        m["L-E"] === "08:45", "L-E=" + m["L-E"]);
 }
 
 console.log("\n=== 5. Alertas solo ante conflicto real (RN-07) ===");
@@ -327,9 +345,10 @@ console.log("\n=== 10. Varias consolas: cursor independiente ===");
     const r = flujoPantallaNuevo(d);
     console.log("  " + horas(r));
     const m = map(r);
-    check("1AC: bloque EQ-X -> 11:00 (inicio más tardío)", m["X1"] === "11:00" && m["X2"] === "11:00");
-    check("2BC: EQ-Z -> 10:00", m["Z1"] === "10:00");
-    check("2BC: bloque EQ-Y -> 12:00", m["Y1"] === "12:00" && m["Y2"] === "12:00");
+    check("1AC: bloque EQ-X -> 08:00 (inicio de su primera licencia)",
+        m["X1"] === "08:00" && m["X2"] === "08:00");
+    check("2BC: bloque EQ-Y -> 09:00", m["Y1"] === "09:00" && m["Y2"] === "09:00");
+    check("2BC: EQ-Z -> 10:00 (su hora de inicio, no el cursor 09:10)", m["Z1"] === "10:00");
 }
 
 console.log("\n=== 11. Pantalla vs Reporte amplio/maniobras, mismo día ===");
@@ -348,8 +367,7 @@ console.log("\n=== 11. Pantalla vs Reporte amplio/maniobras, mismo día ===");
         JSON.stringify(map(pn)) === JSON.stringify(map(pe)) &&
         JSON.stringify(map(pe)) === JSON.stringify(map(rep)),
         JSON.stringify(map(pn)) + " vs " + JSON.stringify(map(rep)));
-    check("los reportes aplican RN-01",
-        rep.every(l => Svc._convertTimeToMinutes(l.TurnoAsignado) >= l.InitHourSort), horas(rep));
+    check("los reportes aplican RN-01", rn01PorBloque(rep), horas(rep));
 
     const guardado = sinGuardar.map(l => Object.assign({}, l, {
         TurnosLicencias_nav: { results: [{ Dateturno: new Date(Date.UTC(2026, 9, 29)), Turno: { P1: "08:00", P2: "09:00", P3: "08:00", P4: "11:00" }[l.Id], Comentarios: "", Agrmanual: false, Desacoplado: false }] }
@@ -382,8 +400,7 @@ console.log("\n=== 12. Invariantes sobre set grande ===");
     });
     check("todo bloque tiene una sola hora", okHora);
     check("todo bloque queda contiguo", okCont);
-    check("RN-01: ninguna licencia antes de su hora de inicio",
-        r.every(l => Svc._convertTimeToMinutes(l.TurnoAsignado) >= l.InitHourSort));
+    check("RN-01: ningún bloque antes de su hora de inicio", rn01PorBloque(r));
     let okOrden = true;
     for (let c of ["1AC", "2BC"]) {
         const h = r.filter(l => l.Consola === c).map(l => Svc._convertTimeToMinutes(l.TurnoAsignado));

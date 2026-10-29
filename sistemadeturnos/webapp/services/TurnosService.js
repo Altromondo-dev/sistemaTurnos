@@ -388,8 +388,8 @@ sap.ui.define([
         //
         // Regla, recorriendo los bloques de UNA consola:
         //
-        //   inicioBloque = max(InitHourSort de sus licencias)   -> RN-01
-        //   durBloque    = max(duration de sus licencias)       -> separación
+        //   inicioBloque = hora de inicio del bloque (ver _inicioBloque)  -> RN-01
+        //   durBloque    = max(duration de sus licencias)                 -> separación
         //
         //   ancla (grupo editado por el usuario, o licencia con turno guardado):
         //       turno = su valor actual
@@ -531,14 +531,26 @@ sap.ui.define([
             return aGrupos;
         },
 
-        // RN-01: el bloque no puede arrancar antes de la hora de inicio MÁS TARDÍA
-        // de las licencias que lo componen.
+        // RN-01: hora de inicio del bloque. ÚNICO lugar donde vive este criterio;
+        // cambiarlo acá cambia la regla en la asignación inicial y en las dos cascadas.
+        //
+        // Criterio vigente: el MÍNIMO, o sea la hora de inicio de la primera licencia
+        // del bloque (Figura 10 del requerimiento: el bloque EM VSINC, con inicios de
+        // 08:00 a 11:07, arranca a las 08:00 y está marcado como correcto).
+        //
+        // Consecuencia: dentro de un bloque acoplado, las licencias que empiezan más
+        // tarde quedan con un turno anterior a su propia hora de inicio. RN-01 aplica
+        // al bloque, no a cada licencia.
+        //
+        // Pendiente de confirmación del cliente. Para volver al máximo (el turno del
+        // bloque no antes de la hora de inicio más tardía) alcanza con invertir la
+        // comparación de abajo: iHora > iInicio.
         _inicioBloque: function (aItems) {
             let iInicio = null;
             (aItems || []).forEach((it) => {
                 const iHora = it.InitHourSort != null ? it.InitHourSort : Utils.getInitHourSort(it);
                 if (iHora == null || isNaN(iHora)) return;
-                if (iInicio == null || iHora > iInicio) { iInicio = iHora; }
+                if (iInicio == null || iHora < iInicio) { iInicio = iHora; }
             });
             return iInicio;
         },

@@ -46,9 +46,15 @@ controllers:
 
 ## Reglas que se verifican
 
-- **RN-01** — el turno de cada licencia nunca queda antes de su hora de inicio.
-  En un bloque acoplado, el turno es el mayor entre el cursor y la hora de inicio
-  **más tardía** del bloque.
+- **RN-01** — el turno de un bloque es el mayor entre el cursor y la hora de inicio
+  del bloque. La hora de inicio del bloque es el **mínimo** de las de sus licencias,
+  o sea la de la primera (Figura 10 del requerimiento). Pendiente de confirmación
+  del cliente: el criterio vive en un solo lugar, `TurnosService._inicioBloque`.
+
+  Consecuencia, y por eso la regresión no lo chequea por licencia: dentro de un
+  bloque acoplado, las licencias que empiezan más tarde quedan con un turno
+  anterior a su propia hora de inicio. RN-01 aplica al bloque, no a cada licencia.
+  El helper `rn01PorBloque()` de `regresion.js` es el que codifica esto.
 - **Separación** — después de un bloque se avanza la **mayor** duración de sus
   licencias, no la de `items[0]`.
 - **RN-07** — se alerta solo ante conflicto real (solape con el bloque anterior, o
@@ -65,15 +71,16 @@ controllers:
    minutos para las tres categorías que usan los escenarios. Si cambia la regla de
    negocio, este check falla primero y explica el resto de las fallas.
 1. **Caso QAS 29.10.2026** — `1AC-DEH1` con inicios 08:00 / 10:00 / 10:00 / 12:00 y
-   `1AC-BVI1` con inicio 10:00. Verifica `1AC-BVI1` → 10:00 y el bloque `1AC-DEH1`
-   → 12:00, contiguo y en `grp_1AC-DEH1`.
-2. **Caso QAS original de 3 licencias** — las dos de `1AC-DEH1` en 10:00 y
-   contiguas, `1AC-BVI1` empujada a 10:10. Cubre el acople de `#12-13` ya con RN-01.
+   `1AC-BVI1` con inicio 10:00. Verifica el bloque `1AC-DEH1` → 08:00, contiguo y en
+   `grp_1AC-DEH1`, y `1AC-BVI1` → 10:00.
+2. **Caso QAS original de 3 licencias** — las dos de `1AC-DEH1` en 08:00 y
+   contiguas, `1AC-BVI1` en 10:00. Cubre el acople de `#12-13` ya con RN-01.
 3. **RN-01** — el ejemplo del diseño: L-A 07:00 (30'), L-B 08:00 (10'), L-C 13:00
    (45') → 07:00 / 08:00 / 13:00. Sin RN-01 daban 07:00 / 07:30 / 07:40.
-4. **Bloque mixto** — L-B (10') y L-C (45') en el mismo equipo. El bloque arranca
-   13:00 (inicio más tardío) y el bloque siguiente queda en 13:45: con la regla
-   vieja (`items[0]`) habría quedado en 13:10, solapado.
+4. **Bloque mixto** — L-B (08:00, 10') y L-C (13:00, 45') en el mismo equipo. El
+   bloque arranca 08:00 (el inicio mínimo) y dura 45' (la duración máxima), así que
+   el bloque siguiente queda en 08:45: con la regla vieja (`items[0]` = 10') habría
+   quedado en 08:10, solapado.
 5. **Alertas solo ante conflicto** — cuatro variantes sobre el motor directo:
    hueco (sin alerta), solape, turno anterior a la hora de inicio, y ambos a la vez.
    En todas se comprueba además que el valor del usuario **no** se corrige.
