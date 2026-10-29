@@ -19,8 +19,9 @@ const horas = (a) => a.map(l => l.Id + "=" + l.TurnoAsignado).join(" ");
 const map = (a) => a.reduce((m, l) => (m[l.Id] = l.TurnoAsignado, m), {});
 const hhmm = (h, m) => h * 60 + (m || 0);
 
-// RN-01 a nivel de BLOQUE: el turno de un bloque no puede ser anterior a la hora de
-// inicio de su primera licencia (criterio mínimo de _inicioBloque, Figura 10).
+// RN-01, definida a nivel de BLOQUE: ningún bloque arranca antes de la hora de
+// inicio de su primera licencia (el mínimo; ver TurnosService._inicioBloque y la
+// Figura 10 del requerimiento, criterio confirmado por el cliente).
 // Ojo: NO vale por licencia — dentro de un bloque acoplado, las que empiezan más
 // tarde quedan con un turno anterior a su propia hora de inicio. Es lo esperado.
 function rn01PorBloque(aLicences) {

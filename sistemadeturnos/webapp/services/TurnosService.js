@@ -531,20 +531,19 @@ sap.ui.define([
             return aGrupos;
         },
 
-        // RN-01: hora de inicio del bloque. ÚNICO lugar donde vive este criterio;
-        // cambiarlo acá cambia la regla en la asignación inicial y en las dos cascadas.
+        // RN-01: ningún bloque arranca antes de la hora de inicio de su PRIMERA
+        // licencia, o sea el MÍNIMO de las horas de inicio del bloque.
         //
-        // Criterio vigente: el MÍNIMO, o sea la hora de inicio de la primera licencia
-        // del bloque (Figura 10 del requerimiento: el bloque EM VSINC, con inicios de
-        // 08:00 a 11:07, arranca a las 08:00 y está marcado como correcto).
+        // Criterio confirmado por el cliente, según la Figura 10 del requerimiento:
+        // el bloque EM VSINC, con inicios de 08:00 a 11:07, arranca a las 08:00 y
+        // está marcado como correcto.
         //
         // Consecuencia: dentro de un bloque acoplado, las licencias que empiezan más
-        // tarde quedan con un turno anterior a su propia hora de inicio. RN-01 aplica
-        // al bloque, no a cada licencia.
+        // tarde quedan con un turno anterior a su propia hora de inicio. RN-01 está
+        // definida a nivel de bloque, no de licencia.
         //
-        // Pendiente de confirmación del cliente. Para volver al máximo (el turno del
-        // bloque no antes de la hora de inicio más tardía) alcanza con invertir la
-        // comparación de abajo: iHora > iInicio.
+        // ÚNICO lugar donde vive este criterio: cambiarlo acá lo cambia en la
+        // asignación inicial y en las dos cascadas.
         _inicioBloque: function (aItems) {
             let iInicio = null;
             (aItems || []).forEach((it) => {

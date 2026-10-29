@@ -46,15 +46,17 @@ controllers:
 
 ## Reglas que se verifican
 
-- **RN-01** — el turno de un bloque es el mayor entre el cursor y la hora de inicio
-  del bloque. La hora de inicio del bloque es el **mínimo** de las de sus licencias,
-  o sea la de la primera (Figura 10 del requerimiento). Pendiente de confirmación
-  del cliente: el criterio vive en un solo lugar, `TurnosService._inicioBloque`.
+- **RN-01** — ningún bloque arranca antes de la hora de inicio de su **primera**
+  licencia: el turno del bloque es el mayor entre el cursor y el **mínimo** de las
+  horas de inicio del bloque. Criterio **confirmado por el cliente**, según la
+  Figura 10 del requerimiento (el bloque EM VSINC, con inicios de 08:00 a 11:07,
+  arranca a las 08:00 y está marcado como correcto). Vive en un solo lugar,
+  `TurnosService._inicioBloque`.
 
-  Consecuencia, y por eso la regresión no lo chequea por licencia: dentro de un
-  bloque acoplado, las licencias que empiezan más tarde quedan con un turno
-  anterior a su propia hora de inicio. RN-01 aplica al bloque, no a cada licencia.
-  El helper `rn01PorBloque()` de `regresion.js` es el que codifica esto.
+  La regla está definida a nivel de bloque, no de licencia, y por eso la regresión
+  no la chequea por licencia: dentro de un bloque acoplado, las que empiezan más
+  tarde quedan con un turno anterior a su propia hora de inicio. El helper
+  `rn01PorBloque()` de `regresion.js` es el que codifica esto.
 - **Separación** — después de un bloque se avanza la **mayor** duración de sus
   licencias, no la de `items[0]`.
 - **RN-07** — se alerta solo ante conflicto real (solape con el bloque anterior, o
