@@ -10,6 +10,11 @@ const APP = path.resolve(__dirname, "..", "..", "sistemadeturnos", "webapp");
 
 const cache = {};
 
+// Timers que programa el código de la app. No se ejecutan solos (no hay UI que
+// refrescar y no deben retener el proceso): la regresión los puede disparar a mano
+// para simular que pasó el tiempo.
+const timers = [];
+
 function stubFor(dep) {
     // Dependencias sap.* => objeto laxo
     const handler = {
@@ -37,9 +42,7 @@ function loadModule(depName) {
     let result;
     const sandbox = {
         console,
-        // Los warnings de turno se limpian a los 4" con setTimeout: en la regresión no
-        // se ejecuta (no hay UI que refrescar y no debe retener el proceso).
-        setTimeout: () => 0,
+        setTimeout: (fn, ms) => { timers.push({ fn, ms }); return 0; },
         Date, Math, JSON, Object, Array, String, Number, Boolean, Promise, Map, Set, RegExp, Error, isNaN, parseInt, parseFloat,
         jQuery: stubFor("jQuery"),
         window: {},
@@ -62,4 +65,4 @@ function loadModule(depName) {
     return (cache[depName] = result);
 }
 
-module.exports = { loadModule, APP };
+module.exports = { loadModule, APP, timers };

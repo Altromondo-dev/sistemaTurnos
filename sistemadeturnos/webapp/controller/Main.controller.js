@@ -3318,9 +3318,11 @@ sap.ui.define([
                             // P-06: con Orden guardado se respeta el orden de pantalla y las
                             // licencias nuevas se ubican por hora de inicio (P-05). Un turno
                             // anterior a 14a-2 (todo Orden 0) se muestra igual que en 14a-1.
-                            var aAlertasCarga = [];
+                            // Una licencia nueva que pisa una fila fijada: se alerta en esa
+                            // fila, no se modifica. Se marca antes del setData para que el
+                            // binding tome el mensaje.
                             if (arrayOrdenado.some(it => Number(it.Orden) > 0)) {
-                                aAlertasCarga = TurnosService.cargarConOrden(arrayOrdenado).alertas;
+                                this._mostrarAlertasMotor(arrayOrdenado, TurnosService.cargarConOrden(arrayOrdenado));
                                 this._assignGroupColors(arrayOrdenado);
                             } else {
                                 this._assignGroupColors(arrayOrdenado);
@@ -3339,10 +3341,6 @@ sap.ui.define([
 
                             oLicencesModel.setData(arrayOrdenado);
                             Utils.onCountItems(oView, arrayOrdenado);
-                            // INI MOD TRNS #SistemaDeTurno-14
-                            // Una licencia nueva que pisa una fila fijada: se alerta, no se modifica
-                            this._mostrarAlertasMotor(arrayOrdenado, aAlertasCarga, null, oLicencesModel);
-                            // FIN MOD TRNS #SistemaDeTurno-14
 
                             //CLONAR Y AGREGAR DESCRIPCIONES TAMBIÉN AL CLON
                             const arrayClonado = JSON.parse(JSON.stringify(arrayOrdenado));
@@ -3518,15 +3516,13 @@ sap.ui.define([
             if (!sNewTime || sNewTime.trim() === "") {
                 // INI MOD TRNS #SistemaDeTurno-14
                 // this._recalculateEmptyShift(aLicences, oSelectedLicence, iLicenseIndex);
-                // P-07: la fila deja de estar fijada y vuelve al cálculo automático
-                var aAlertasVaciado = this._recalculateEmptyShift(aLicences, oSelectedLicence, iLicenseIndex);
+                // P-07: la fila deja de estar fijada y vuelve al cálculo automático.
+                // Las alertas quedan marcadas en la fila afectada antes del refresh.
+                this._recalculateEmptyShift(aLicences, oSelectedLicence, iLicenseIndex);
                 // FIN MOD TRNS #SistemaDeTurno-14
 
                 oModel.setProperty("/", aLicences);
                 oModel.refresh(true);
-                // INI MOD TRNS #SistemaDeTurno-14
-                this._mostrarAlertasMotor(aLicences, aAlertasVaciado, null, oModel);
-                // FIN MOD TRNS #SistemaDeTurno-14
                 // INI MOD TRNS #SistemaDeTurno-8-9-10
                 this._onTurnoModificado(this._getGruposAfectados(mAntes, aLicences, [oSelectedLicence.Id]));
                 // FIN MOD TRNS #SistemaDeTurno-8-9-10
@@ -3548,6 +3544,13 @@ sap.ui.define([
                             // INI MOD TRNS #SistemaDeTurno-14
                             // Hora vaciada: el bloque deja de estar fijado (P-07)
                             this._setFijadoGrupo(aLicences, oSelectedLicence, false);
+                            // Sin hora no hay conflicto: se le quita la alerta del motor
+                            // (ya no se limpia sola a los 4 segundos)
+                            aLicences.forEach(function (oLic) {
+                                if (oLic.Consola === oSelectedLicence.Consola && oLic.Grupo === oSelectedLicence.Grupo) {
+                                    oLic.TurnoWarning = "";
+                                }
+                            });
                             // FIN MOD TRNS #SistemaDeTurno-14
 
                             // INI MOD TRNS #SistemaDeTurno-12-13
@@ -3597,7 +3600,8 @@ sap.ui.define([
 
             // INI MOD TRNS #SistemaDeTurno-14
             // var aWarningItems = this._cascadeGroupsDown(aLicences, iNewIndex, oSource);
-            var aWarningItems = this._recalcularDesde(aLicences, iNewIndex, oSource);
+            // Las alertas quedan en TurnoWarning de la fila afectada (binding), no en oSource
+            this._recalcularDesde(aLicences, iNewIndex);
             // FIN MOD TRNS #SistemaDeTurno-14
 
             // INI MOD TRNS #SistemaDeTurno-12-13
@@ -3612,13 +3616,17 @@ sap.ui.define([
             this._onTurnoModificado(this._getGruposAfectados(mAntes, aLicences, [oSelectedLicence.Id]));
             // FIN MOD TRNS #SistemaDeTurno-8-9-10
 
-            // Limpiar el warning del modelo tras 4 segundos (se muestra una sola vez)
-            if (aWarningItems && aWarningItems.length > 0) {
-                setTimeout(function () {
-                    aWarningItems.forEach(function (it) { it.TurnoWarning = ""; });
-                    oModel.refresh(true);
-                }, 4000);
-            }
+            // INI MOD TRNS #SistemaDeTurno-14
+            // Punto 14: el mensaje del campo sigue visible mientras exista el conflicto; lo
+            // limpia la próxima pasada del motor que evalúe ese bloque.
+            // // Limpiar el warning del modelo tras 4 segundos (se muestra una sola vez)
+            // if (aWarningItems && aWarningItems.length > 0) {
+            //     setTimeout(function () {
+            //         aWarningItems.forEach(function (it) { it.TurnoWarning = ""; });
+            //         oModel.refresh(true);
+            //     }, 4000);
+            // }
+            // FIN MOD TRNS #SistemaDeTurno-14
         },
 
         // INI MOD TRNS #SistemaDeTurno-14
@@ -3626,9 +3634,8 @@ sap.ui.define([
         // (campo vaciado). La regla, RN-01 y el criterio de alertas viven en
         // TurnosService.recalcularDesde, el mismo motor que usa la asignación inicial.
         //
-        // Devuelve las licencias que quedaron marcadas con TurnoWarning, para que el
-        // caller las limpie después de mostrarlas una sola vez.
-        _recalcularDesde: function (aLicences, iStartIndex, oTimeControl) {
+        // Devuelve las licencias que quedaron con alerta (TurnoWarning).
+        _recalcularDesde: function (aLicences, iStartIndex) {
             if (iStartIndex < 0 || iStartIndex >= aLicences.length) {
                 return [];
             }
@@ -3651,13 +3658,6 @@ sap.ui.define([
                 return [];
             }
 
-            // Limpiar warnings previos de toda la consola
-            aLicences.forEach(function (lic) {
-                if ((lic.Consola || "") === sConsola) {
-                    lic.TurnoWarning = "";
-                }
-            });
-
             // RN-03/04 + P-03 + P-04: solo se recalculan las filas posteriores no fijadas,
             // en ambos sentidos (respetarValorActual: false), y la cascada se detiene en la
             // siguiente fijada sin modificarla.
@@ -3671,68 +3671,83 @@ sap.ui.define([
             });
 
             // RN-07: solo se alerta por conflicto real, y la alerta no bloquea ni corrige.
-            return this._mostrarAlertasMotor(aLicences, oResultado.alertas, oTimeControl);
+            return this._mostrarAlertasMotor(aLicences, oResultado);
         },
 
-        // Marca con TurnoWarning los bloques de las alertas del motor y muestra un único
-        // mensaje. Con oTimeControl, refleja en él los conflictos del bloque editado.
-        // Con oModel, el warning se limpia solo a los 4 segundos; si no, lo limpia el
-        // caller con las licencias devueltas.
-        _mostrarAlertasMotor: function (aLicences, aAlertas, oTimeControl, oModel) {
-            var ValueState = CoreLibrary.ValueState;
-            var aLista = aAlertas || [];
+        // Punto 14: las alertas del motor se muestran solo como mensaje del TimePicker de
+        // Turno de la FILA AFECTADA, sin toast. El mensaje sale del binding valueStateText
+        // -> TurnoWarning (formatter.turnoWarningText), así que sigue a la fila aunque la
+        // tabla recicle los controles al hacer scroll.
+        //  - Cada bloque alertado recibe solo los textos de SUS alertas: solapeFijada
+        //    queda en la fila fijada que quedó pisada, no en la editada.
+        //  - El mensaje queda mientras el conflicto exista: no se limpia por tiempo, sino
+        //    cuando una pasada del motor vuelve a evaluar ese bloque (evaluados).
+        // oResultado = { alertas, evaluados } del motor. Hay que llamarlo antes del refresh
+        // del modelo (si no, el binding no toma el mensaje) y antes de rearmar los grupos
+        // (las claves de las alertas son las del momento del motor).
+        // Devuelve las licencias que quedaron con alerta.
+        _mostrarAlertasMotor: function (aLicences, oResultado) {
+            var aLista = (oResultado && oResultado.alertas) || [];
+            var aEvaluados = (oResultado && oResultado.evaluados) || [];
             var mTextos = {
                 solape: "El turno comienza antes de la separación mínima con el grupo anterior.",
                 antesDeInicio: "El turno comienza antes de la hora de inicio de la licencia.",
                 solapeFijada: "Una fila fijada quedó solapada con el grupo anterior y no se modificó."
             };
-            var fnHay = function (sTipo) {
-                return aLista.some(function (a) { return a.tipo === sTipo; });
+            var fnClave = function (sConsola, sGrupo) {
+                return sConsola + "|" + sGrupo;
             };
 
-            var aMensajes = ["solape", "antesDeInicio", "solapeFijada"]
-                .filter(fnHay)
-                .map(function (sTipo) { return mTextos[sTipo]; });
+            var mEvaluados = {};
+            aEvaluados.forEach(function (e) {
+                mEvaluados[fnClave(e.consola, e.grupo)] = true;
+            });
+
+            var mTipos = {};
+            aLista.forEach(function (a) {
+                var sClave = fnClave(a.consola, a.grupo);
+                (mTipos[sClave] = mTipos[sClave] || []).push(a.tipo);
+            });
 
             var aWarningItems = [];
 
-            if (aMensajes.length === 0) {
-                if (oTimeControl) {
-                    oTimeControl.setValueState(ValueState.None);
-                    oTimeControl.setValueStateText("");
-                }
-                return aWarningItems;
-            }
-
-            var sMensaje = aMensajes.join(" ");
-            MessageHelper.show(sMensaje);
-
             (aLicences || []).forEach(function (lic) {
-                var bAlertada = aLista.some(function (a) {
-                    return (lic.Consola || "") === a.consola && (lic.Grupo || lic.Equnr || "") === a.grupo;
-                });
-                if (bAlertada) {
-                    lic.TurnoWarning = sMensaje;
+                var sClave = fnClave(lic.Consola || "", lic.Grupo || lic.Equnr || "");
+                var aTipos = mTipos[sClave];
+                if (aTipos) {
+                    lic.TurnoWarning = ["solape", "antesDeInicio", "solapeFijada"]
+                        .filter(function (sTipo) { return aTipos.indexOf(sTipo) !== -1; })
+                        .map(function (sTipo) { return mTextos[sTipo]; })
+                        .join(" ");
                     aWarningItems.push(lic);
+                } else if (mEvaluados[sClave]) {
+                    lic.TurnoWarning = "";
                 }
             });
 
-            if (oTimeControl) {
-                if (fnHay("solape") || fnHay("antesDeInicio")) {
-                    oTimeControl.setValueState(ValueState.Error);
-                    oTimeControl.setValueStateText(sMensaje);
-                } else {
-                    oTimeControl.setValueState(ValueState.None);
-                    oTimeControl.setValueStateText("");
-                }
-            }
+            // Sin toast: el mismo texto ya queda debajo del TimePicker de la fila afectada
+            // MessageHelper.show(sMensaje);
 
-            if (oModel && aWarningItems.length > 0) {
-                setTimeout(function () {
-                    aWarningItems.forEach(function (it) { it.TurnoWarning = ""; });
-                    oModel.refresh(true);
-                }, 4000);
-            }
+            // El mensaje del campo sale del binding y no de setValueState sobre el control
+            // editado: el refresh del modelo lo pisaba y en sap.ui.table queda en el control
+            // reciclado, no en la fila.
+            // if (oTimeControl) {
+            //     if (fnHay("solape") || fnHay("antesDeInicio")) {
+            //         oTimeControl.setValueState(ValueState.Error);
+            //         oTimeControl.setValueStateText(sMensaje);
+            //     } else {
+            //         oTimeControl.setValueState(ValueState.None);
+            //         oTimeControl.setValueStateText("");
+            //     }
+            // }
+
+            // El mensaje sigue visible mientras exista el conflicto (ver evaluados)
+            // if (oModel && aWarningItems.length > 0) {
+            //     setTimeout(function () {
+            //         aWarningItems.forEach(function (it) { it.TurnoWarning = ""; });
+            //         oModel.refresh(true);
+            //     }, 4000);
+            // }
 
             return aWarningItems;
         },
@@ -3749,8 +3764,8 @@ sap.ui.define([
         // FIN MOD TRNS #SistemaDeTurno-14
 
         // INI MOD TRNS #SistemaDeTurno-14
-        // Devuelve las alertas del motor (choque con una fila fijada) para que las
-        // muestre el caller.
+        // Las alertas del motor (choque con una fila fijada) quedan en la fila afectada.
+        // Devuelve las licencias que quedaron con alerta.
         // FIN MOD TRNS #SistemaDeTurno-14
         _recalculateEmptyShift: function (aLicences, oSelectedLicence, iLicenseIndex) {
             const consola = oSelectedLicence.Consola;
@@ -3776,23 +3791,23 @@ sap.ui.define([
             const aGrupos = TurnosService._agruparPorConsola(aLicences, consola, "visual", null);
             const iDesdeGrupo = aGrupos.findIndex(g => g.items.indexOf(oSelectedLicence) !== -1);
 
-            let aAlertas = [];
+            let aWarningItems = [];
             if (iDesdeGrupo !== -1) {
-                aAlertas = TurnosService.recalcularDesde(aLicences, {
+                aWarningItems = this._mostrarAlertasMotor(aLicences, TurnosService.recalcularDesde(aLicences, {
                     consola: consola,
                     desdeGrupo: iDesdeGrupo,
                     orden: "visual",
                     anclas: [],
                     respetarValorActual: false,
                     alFijada: "detener"
-                }).alertas;
+                }));
             }
 
             this._rebuildFrontendGroupsByEquipo(aLicences);
             this._assignGroupColors(aLicences);
             // RN-02: la fila queda en su posición
             // this._sortLicences(aLicences);
-            return aAlertas;
+            return aWarningItems;
             // FIN MOD TRNS #SistemaDeTurno-14
         },
 
@@ -4307,7 +4322,8 @@ sap.ui.define([
             //
             // // Insert the detached license after the last element of the group
             // aLicences.splice(groupLastIndex + 1, 0, oDetachedLicense);
-            var aAlertasDesacople = this._desacoplarEnLugar(aLicences, oDetachedLicense, iSelectedIndex);
+            // Las alertas del motor quedan en la fila afectada antes del refresh
+            this._desacoplarEnLugar(aLicences, oDetachedLicense, iSelectedIndex);
             // FIN MOD TRNS #SistemaDeTurno-14
 
             // INI MOD TRNS #SistemaDeTurno-12-13
@@ -4319,9 +4335,6 @@ sap.ui.define([
             // Update the model
             oModel.setProperty("/", aLicences);
             oModel.refresh(true);
-            // INI MOD TRNS #SistemaDeTurno-14
-            this._mostrarAlertasMotor(aLicences, aAlertasDesacople, null, oModel);
-            // FIN MOD TRNS #SistemaDeTurno-14
 
             // INI MOD TRNS #SistemaDeTurno-8-9-10
             this._onTurnoModificado(this._getGruposAfectados(mAntes, aLicences, [oDetachedLicense.Id]));
@@ -4347,7 +4360,8 @@ sap.ui.define([
         //    desacoplado otras, después de ellas (quedan consecutivas).
         //  - Sin fijar, con turno max(cursor, inicio); la cascada sigue desde ahí y se
         //    detiene en la siguiente fijada (P-03).
-        // Devuelve las alertas del motor.
+        // Las alertas del motor quedan en la fila afectada. Devuelve las licencias que
+        // quedaron con alerta.
         _desacoplarEnLugar: function (aLicences, oLicence, iIndiceOriginal) {
             var sConsola = oLicence.Consola || "";
             var sGrupoAnterior = oLicence.Grupo;
@@ -4391,14 +4405,14 @@ sap.ui.define([
                 return [];
             }
 
-            return TurnosService.recalcularDesde(aLicences, {
+            return this._mostrarAlertasMotor(aLicences, TurnosService.recalcularDesde(aLicences, {
                 consola: sConsola,
                 desdeGrupo: iDesdeGrupo,
                 orden: "visual",
                 anclas: [],
                 respetarValorActual: false,
                 alFijada: "detener"
-            }).alertas;
+            }));
         },
         // FIN MOD TRNS #SistemaDeTurno-14
 
@@ -4606,18 +4620,20 @@ sap.ui.define([
 
         // INI MOD TRNS #SistemaDeTurno-14
         // Post-proceso común de "+ Licencias" (onPressAdd) y "Agregar Licencia"
-        // (onConfirmarAgregarLicencias): las agregadas se suman al grupo de su equipo,
-        // se recolorea, se alerta si alguna pisó una fila fijada y se sincronizan las
+        // (onConfirmarAgregarLicencias): se alerta en la fila fijada que alguna pisó, las
+        // agregadas se suman al grupo de su equipo, se recolorea y se sincronizan las
         // Acciones para la entrega (8-9-10).
         _postAgregarLicencias: function (oResultado) {
             const oLicencesModel = this.getView().getModel("LicencesJsonModel");
             const aLicencesActuales = oLicencesModel.getData() || [];
 
+            // Antes de rearmar los grupos (las claves de las alertas son las del motor) y
+            // del refresh (para que el binding tome el mensaje)
+            this._mostrarAlertasMotor(aLicencesActuales, oResultado);
             this._rebuildFrontendGroupsByEquipo(aLicencesActuales);
             this._assignGroupColors(aLicencesActuales);
             oLicencesModel.refresh(true);
 
-            this._mostrarAlertasMotor(aLicencesActuales, oResultado && oResultado.alertas, null, oLicencesModel);
             this._onTurnoModificado(null);
         },
         // FIN MOD TRNS #SistemaDeTurno-14

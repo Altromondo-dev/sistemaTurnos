@@ -307,7 +307,11 @@
                                         <Label text="{i18n>shift}" textAlign="Center" />
                                         <t:template>
                                             <HBox alignItems="Center" justifyContent="SpaceBetween">
-                                                <TimePicker value="{LicencesJsonModel>TurnoAsignado}" valueFormat="HH:mm" displayFormat="HH:mm" valueState="{path: 'LicencesJsonModel>Consola', formatter: '.formatter.turnoColor'}" valueStateText="{path: 'LicencesJsonModel>TurnoWarning', formatter: '.formatter.turnoWarningText'}" change="onChangeHour" class="tpGroupBorder {LicencesJsonModel>ColorGrupoClass}" enabled="{editableModel>/isEditable}" />
+                                                <!-- INI MOD TRNS #SistemaDeTurno-14 -->
+                                                <!-- Punto 14: el valueState también mira TurnoWarning, para que el mensaje de la alerta se vea en consolas cuyo color no muestra mensaje (ver formatter.turnoColor) -->
+                                                <!-- <TimePicker value="{LicencesJsonModel>TurnoAsignado}" valueFormat="HH:mm" displayFormat="HH:mm" valueState="{path: 'LicencesJsonModel>Consola', formatter: '.formatter.turnoColor'}" valueStateText="{path: 'LicencesJsonModel>TurnoWarning', formatter: '.formatter.turnoWarningText'}" change="onChangeHour" class="tpGroupBorder {LicencesJsonModel>ColorGrupoClass}" enabled="{editableModel>/isEditable}" /> -->
+                                                <TimePicker value="{LicencesJsonModel>TurnoAsignado}" valueFormat="HH:mm" displayFormat="HH:mm" valueState="{parts: [{path: 'LicencesJsonModel>Consola'}, {path: 'LicencesJsonModel>TurnoWarning'}], formatter: '.formatter.turnoColor'}" valueStateText="{path: 'LicencesJsonModel>TurnoWarning', formatter: '.formatter.turnoWarningText'}" change="onChangeHour" class="tpGroupBorder {LicencesJsonModel>ColorGrupoClass}" enabled="{editableModel>/isEditable}" />
+                                                <!-- FIN MOD TRNS #SistemaDeTurno-14 -->
                                             </HBox>
                                         </t:template>
                                     </t:Column>

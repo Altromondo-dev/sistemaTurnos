@@ -76,7 +76,22 @@ sap.ui.define([
             return turnoWarning || " ";
         },
 
-        turnoColor: function (consola) {
+        // INI MOD TRNS #SistemaDeTurno-14
+        // El valueState del TimePicker de Turno es el color de la consola. UI5 solo
+        // muestra el mensaje de valueState (valueStateText = alerta del motor) con Error,
+        // Warning o Information: con una alerta, las consolas en Success o None pasan a
+        // Error para que el mensaje se vea; las demás conservan su color.
+        // turnoColor: function (consola) {
+        turnoColor: function (consola, turnoWarning) {
+            const sEstado = FormatHelper._turnoColorConsola(consola);
+            if (turnoWarning && (sEstado === "Success" || sEstado === "None")) {
+                return "Error";
+            }
+            return sEstado;
+        },
+
+        _turnoColorConsola: function (consola) {
+        // FIN MOD TRNS #SistemaDeTurno-14
             switch (consola) {
                 case "NOA":
                     return "Warning";

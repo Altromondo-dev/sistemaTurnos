@@ -33,7 +33,11 @@ código de producción:
   `_convertTimeToMinutes`
 - `controller/Main.controller.js` → `_recalcularDesde`, `_recalculateEmptyShift`,
   `_setFijadoGrupo`, `_desacoplarEnLugar`, `_updateSameGroupAndConsoleShifts`,
-  `_sortLicencesNuevoTurno`, `_sortLicences`, `_rebuildFrontendGroupsByEquipo`
+  `_sortLicencesNuevoTurno`, `_sortLicences`, `_rebuildFrontendGroupsByEquipo`,
+  `_mostrarAlertasMotor`, y los handlers `onChangeHour`, `onDetachLicense` y
+  `_postAgregarLicencias`
+- `utils/FormatHelper.js` → `turnoColor` y `turnoWarningText` (valueState y mensaje
+  del TimePicker de Turno)
 - `utils/Utils.js` → `getShiftInfo` (categoría y duración), `getInitHourSort`
   (hora de inicio en minutos)
 
@@ -69,6 +73,11 @@ controllers:
 - **RN-07** — se alerta solo ante conflicto real (solape con el bloque anterior, o
   turno anterior a la hora de inicio). Los huecos no alertan, y la alerta nunca
   bloquea ni corrige el valor.
+- **Alertas en la fila** (punto 14) — la alerta se muestra solo como mensaje del
+  TimePicker de Turno de la **fila afectada** (`TurnoWarning`, bindeado al
+  `valueStateText`), sin toast. `solapeFijada` queda en la fila fijada pisada, no en
+  la editada. Dura lo que dura el conflicto: la limpia la siguiente pasada del motor
+  que vuelve a evaluar ese bloque (`evaluados` de `recalcularDesde`), no un timer.
 - **Modo empuje** (carga y licencias nuevas) — un bloque posterior toma
   `max(cursor, inicioBloque, valorActual)`: se empuja si quedó solapado, se respeta
   si ya estaba más tarde, y nunca se adelanta.
@@ -170,14 +179,33 @@ controllers:
     `_postAgregarLicencias`). Usa `pantallaUI()`, una pantalla mínima (modelo
     JSON, TimePicker y tabla stub) para correr los handlers del controller.
 
+    `pantallaUI()` simula además el binding: `ui.campo[Id]` es el mensaje que muestra
+    el TimePicker de la fila y se actualiza, como el JSONModel, en `setProperty("/")` y
+    `refresh()`. Por eso una alerta marcada después del refresh no llega al campo.
+    En cada paso se verifica que la alerta quede en el campo de la fila afectada y que
+    no salga como toast (el único toast es el aviso de desacople).
+
     Con `Main.controller.js` de 14a-2 y `TurnosService.js` de 14a-1, la secuencia da
     exactamente lo observado en QAS (10:15 / 10:05 / 11:00 / **11:05** con
     `Fijado = true`): el controller marca la fila, pero el motor viejo no conoce
     `alFijada` ni `g.fijado`. Los dos archivos tienen que desplegarse juntos.
 
-`harness.js` expone `setTimeout` como no-op: los warnings de turno se limpian
-a los 4" en la UI; en la regresión no hay nada que refrescar y no debe quedar el
-proceso esperando.
+27. **Punto 14: alertas en el campo de la fila afectada, sin toast** — (a) el ejemplo
+    del pedido: la editada solapa y arranca antes de su inicio, su campo muestra los
+    dos textos; (b) el rango prohibido sigue con su MessageBox y el campo vaciado
+    pierde la alerta; (c) cada fila con **su** alerta (la editada `solape`, la fijada
+    pisada `solapeFijada`), editar más abajo no las borra, pasado el tiempo siguen, y
+    se limpian solo cuando el conflicto se resuelve; (d) carga con Orden: la alerta
+    queda en la fijada pisada; (e) "+ Licencias" sobre una pantalla limpia: la alerta
+    llega al campo de la fijada; (f) `turnoColor`: el mensaje se ve en todas las
+    consolas. Al final de la corrida se verifica que **ninguna** alerta del motor haya
+    pasado por `MessageHelper` en ningún escenario.
+
+`harness.js` no ejecuta los `setTimeout` de la app (no hay UI que refrescar y el
+proceso no debe quedar esperando): los registra en `timers` para que la regresión los
+dispare a mano cuando quiere simular que pasó el tiempo (escenario 27c). Los
+espías de `MessageHelper.show` y `MessageBox.error` se instalan sobre los mismos
+objetos que recibe el controller.
 
 ## Datos de prueba
 

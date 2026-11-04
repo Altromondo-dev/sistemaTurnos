@@ -5,11 +5,31 @@
 // #SistemaDeTurno-14    : motor único, RN-01, separación por mayor duración, RN-07
 //                         14a-2: RN-02, Fijado (RN-03/04, P-03, P-04, P-07), Orden (P-06),
 //                         licencias nuevas por hora de inicio (P-05), desacople en su lugar
-const { loadModule } = require("./harness");
+//                         punto 14: alertas del motor solo en el campo de la fila afectada
+const { loadModule, timers } = require("./harness");
 
 const Svc = loadModule("transener/sistemadeturnos/services/TurnosService");
 const Ctrl = loadModule("transener/sistemadeturnos/controller/Main.controller");
 const Utils = loadModule("transener/sistemadeturnos/utils/Utils");
+const Fmt = loadModule("transener/sistemadeturnos/utils/FormatHelper");
+
+// Espías de mensajes: MessageHelper (toast) y MessageBox son los mismos objetos que
+// recibe el controller, así que queda registrado todo lo que muestra.
+const toasts = [];        // se vacía por paso
+const toastsTodos = [];   // toda la corrida
+loadModule("transener/sistemadeturnos/utils/MessageHelper").show = (s) => { toasts.push(s); toastsTodos.push(s); };
+const messageBoxes = [];
+loadModule("sap/m/MessageBox").error = (s, mOpts) => {
+    messageBoxes.push(s);
+    if (mOpts && mOpts.onClose) mOpts.onClose();   // el usuario cierra el diálogo
+};
+// Textos de las alertas del motor: los que se ven debajo del TimePicker de Turno
+const TXT = {
+    solape: "El turno comienza antes de la separación mínima con el grupo anterior.",
+    antesDeInicio: "El turno comienza antes de la hora de inicio de la licencia.",
+    solapeFijada: "Una fila fijada quedó solapada con el grupo anterior y no se modificó."
+};
+const esAlertaMotor = (s) => Object.keys(TXT).some(k => String(s).indexOf(TXT[k]) !== -1);
 
 let pass = 0, fail = 0;
 function check(name, cond, extra) {
@@ -283,7 +303,7 @@ console.log("\n=== 7. Cascada desde el controller (onChangeHour / campo vaciado)
         lic("L-A", "EQ-A", "1AC", hhmm(7), "equipo30", { TurnoAsignado: "07:00" }),
         lic("L-B", "EQ-B", "1AC", hhmm(7), "sin10", { TurnoAsignado: "07:10" })
     ];
-    let aWarn = Ctrl._recalcularDesde(d, 1, null);
+    let aWarn = Ctrl._recalcularDesde(d, 1);
     console.log("  7a conflicto: " + horas(d) + "  warnings=" + aWarn.length);
     check("marca TurnoWarning ante solape", aWarn.length === 1 && !!aWarn[0].TurnoWarning);
     check("no corrige el valor del ancla", d.find(l => l.Id === "L-B").TurnoAsignado === "07:10");
@@ -292,7 +312,7 @@ console.log("\n=== 7. Cascada desde el controller (onChangeHour / campo vaciado)
         lic("L-A", "EQ-A", "1AC", hhmm(7), "equipo30", { TurnoAsignado: "07:00" }),
         lic("L-B", "EQ-B", "1AC", hhmm(9), "sin10", { TurnoAsignado: "09:00" })
     ];
-    aWarn = Ctrl._recalcularDesde(d, 1, null);
+    aWarn = Ctrl._recalcularDesde(d, 1);
     console.log("  7b sin conflicto: " + horas(d) + "  warnings=" + aWarn.length);
     check("sin warnings cuando no hay conflicto", aWarn.length === 0);
 
@@ -449,7 +469,7 @@ function editar(a, id, hora) {
     const oLic = L(a, id);
     Ctrl._updateSameGroupAndConsoleShifts(a, oLic, hora);
     Ctrl._setFijadoGrupo(a, oLic, true);
-    return Ctrl._recalcularDesde(a, a.indexOf(oLic), null);
+    return Ctrl._recalcularDesde(a, a.indexOf(oLic));
 }
 // Núcleo de onChangeHour con el campo vaciado
 function vaciar(a, id) {
@@ -468,7 +488,9 @@ function flujoCargaGuardada(data) {
     Ctrl._rebuildFrontendGroupsByEquipo(a);
     let alertas = [];
     if (a.some(l => Number(l.Orden) > 0)) {
-        alertas = Svc.cargarConOrden(a).alertas;
+        const oRes = Svc.cargarConOrden(a);
+        Ctrl._mostrarAlertasMotor(a, oRes);   // successSelectTurno, antes del setData
+        alertas = oRes.alertas;
     } else {
         Ctrl._sortLicences(a);
     }
@@ -761,12 +783,16 @@ console.log("\n=== 25. Invariantes con ediciones al azar ===");
 // Pantalla mínima para correr los handlers reales del controller (onChangeHour,
 // onDetachLicense, _postAgregarLicencias): modelo JSON, TimePicker y tabla stub.
 function pantallaUI(aDatos) {
-    const ui = { data: aDatos };
+    const ui = { data: aDatos, campo: {} };
+    // ui.campo[Id] = mensaje que muestra el TimePicker de la fila (valueStateText ->
+    // TurnoWarning). Como el binding, se actualiza en setProperty("/") y en refresh():
+    // una alerta marcada después del último refresh no llega al campo.
+    const binding = () => ui.data.forEach(l => { ui.campo[l.Id] = l.TurnoWarning || ""; });
     const oModel = {
         getProperty: (p) => p === "/" ? ui.data : undefined,
-        setProperty: (p, v) => { if (p === "/") ui.data = v; },
+        setProperty: (p, v) => { if (p === "/") { ui.data = v; binding(); } },
         getData: () => ui.data,
-        refresh() { }
+        refresh: binding
     };
     const ctx = Object.create(Ctrl);
     ctx.getView = () => ({
@@ -780,7 +806,6 @@ function pantallaUI(aDatos) {
     // Usuario cambia la hora de una fila: el binding two-way escribe el valor en el
     // modelo y después el TimePicker dispara change -> onChangeHour
     ui.hora = (id, sHora) => {
-        ui.data.forEach(l => { l.TurnoWarning = ""; });   // el timeout de 4" de la UI
         const idx = ui.data.findIndex(l => l.Id === id);
         ui.data[idx].TurnoAsignado = sHora;
         const oPicker = { getBindingContext: () => contexto(idx), setValue() { }, setValueState() { }, setValueStateText() { } };
@@ -788,19 +813,17 @@ function pantallaUI(aDatos) {
     };
     // Menú contextual -> Desacoplar
     ui.desacoplar = (id) => {
-        ui.data.forEach(l => { l.TurnoWarning = ""; });
         const idx = ui.data.findIndex(l => l.Id === id);
         const oItem = { getParent: () => ({ getBindingContext: () => contexto(idx) }) };
         ctx.onDetachLicense({ getSource: () => oItem });
     };
     // "+ Licencias": lo que hace appendLicencesToModel sobre el modelo + el post-proceso real
     ui.agregar = (aNuevas) => {
-        ui.data.forEach(l => { l.TurnoWarning = ""; });
         ctx._postAgregarLicencias(Svc.ubicarNuevas(ui.data, aNuevas));
     };
     ui.estado = (sPaso) => console.log("  " + sPaso + "\n" + ui.data.map(l =>
         `      ${l.Id.padEnd(11)} ${(l.Consola || "").padEnd(12)} ${l.TurnoAsignado}  Fijado=${l.Fijado === true}` +
-        (l.TurnoWarning ? "  [alerta]" : "")).join("\n"));
+        (ui.campo[l.Id] ? "  [campo: " + ui.campo[l.Id] + "]" : "")).join("\n"));
     return ui;
 }
 
@@ -839,21 +862,35 @@ console.log("\n=== 26. Bug QAS 14a-2 (29.10.2026, CENTRO-CUYO): la cascada no em
     check("3: 1AC-BVI1 en 11:00 y Fijado = true", t(ui.data, BVI1) === "11:00" && L(ui.data, BVI1).Fijado === true);
     check("3: 1AC-DEH1 no cambia (09:50, fijado)", deh(l => l.TurnoAsignado === "09:50" && l.Fijado === true));
 
+    toasts.length = 0;
     ui.hora("L202600275", "10:50"); ui.estado("4. bloque 1AC-DEH1 -> 10:50");
     check("4: 1AC-BVI1 fijada sigue en 11:00 (no se empuja a 11:05)", t(ui.data, BVI1) === "11:00", t(ui.data, BVI1));
     check("4: 1AC-BVI1 sigue fijada", L(ui.data, BVI1).Fijado === true);
-    check("4: alerta solapeFijada sobre 1AC-BVI1", !!L(ui.data, BVI1).TurnoWarning);
+    check("4: el campo de 1AC-BVI1 (la fijada pisada, no la editada) muestra solapeFijada",
+        ui.campo[BVI1] === TXT.solapeFijada, ui.campo[BVI1]);
+    check("4: el bloque editado 1AC-DEH1 no alerta", deh(l => ui.campo[l.Id] === ""));
+    check("4: sin toast", toasts.length === 0, toasts.join(" | "));
     check("4: 5APA (NEA) no se toca", t(ui.data, "L5APA") === "07:00");
 
     // Punto 4 del pedido: el mismo choque por los otros caminos
+    toasts.length = 0;
     ui.hora("L202600275", ""); ui.estado("5. se borra la hora de 1AC-DEH1 (P-07)");
     check("5: 1AC-DEH1 libre, vuelve a 08:00 (su inicio)", deh(l => l.Fijado === false && l.TurnoAsignado === "08:00"));
     check("5: 1AC-BVI1 fijada sigue en 11:00", t(ui.data, BVI1) === "11:00" && L(ui.data, BVI1).Fijado === true);
+    check("5: 1AC-BVI1 ya no está pisada: su campo deja de alertar", ui.campo[BVI1] === "", ui.campo[BVI1]);
+    check("5: sin toast", toasts.length === 0, toasts.join(" | "));
 
+    toasts.length = 0;
     ui.desacoplar("L202600279"); ui.estado("6. se desacopla L202600279 (TcT)");
     check("6: queda a continuación de su bloque", ids(ui.data) === "L202600275,L202600272,L202600276,L202600279,L202600271,L5APA", ids(ui.data));
     check("6: L202600279 = 12:00 (su inicio), sin fijar", t(ui.data, "L202600279") === "12:00" && L(ui.data, "L202600279").Fijado === false);
-    check("6: 1AC-BVI1 fijada sigue en 11:00 y alerta", t(ui.data, BVI1) === "11:00" && !!L(ui.data, BVI1).TurnoWarning);
+    check("6: 1AC-BVI1 fijada sigue en 11:00 y su campo alerta",
+        t(ui.data, BVI1) === "11:00" && ui.campo[BVI1] === TXT.solapeFijada, ui.campo[BVI1]);
+    check("6: la desacoplada no alerta", ui.campo.L202600279 === "");
+    check("6: el único toast es el aviso de desacople (la alerta no)",
+        toasts.length === 1 && toasts[0].indexOf("Licencia desacoplada") === 0, toasts.join(" | "));
+
+    toasts.length = 0;
 
     ui.agregar([lic("LNUEVA", "1AC-NUE1", "CENTRO-CUYO", hhmm(10, 30), "sin10",
         { Grupo: "_Desacoplado_LNUEVA", Desacoplado: false, Fijado: false, Orden: 0 })]);
@@ -861,7 +898,115 @@ console.log("\n=== 26. Bug QAS 14a-2 (29.10.2026, CENTRO-CUYO): la cascada no em
     check("7: la nueva queda antes del bloque de las 12:00", ids(ui.data) === "L202600275,L202600272,L202600276,LNUEVA,L202600279,L202600271,L5APA", ids(ui.data));
     check("7: nueva = 10:30 y 1AC-BVI1 fijada sigue en 11:00",
         t(ui.data, "LNUEVA") === "10:30" && t(ui.data, BVI1) === "11:00" && L(ui.data, BVI1).Fijado === true);
+    check("7: 1AC-BVI1 sigue pisada y su campo sigue alertando", ui.campo[BVI1] === TXT.solapeFijada, ui.campo[BVI1]);
+    check("7: la nueva no alerta y no hay toast", ui.campo.LNUEVA === "" && toasts.length === 0, toasts.join(" | "));
 }
+
+console.log("\n=== 27. Punto 14: alertas del motor en el campo de la fila afectada, sin toast ===");
+{
+    const cc = (Id, Equnr, inicio, cat, turno, extra) => lic(Id, Equnr, "CENTRO-CUYO", inicio, cat,
+        Object.assign({ TurnoAsignado: turno }, extra || {}));
+    const pantalla = (d) => { Ctrl._rebuildFrontendGroupsByEquipo(d); return pantallaUI(d); };
+
+    // 27a. Ejemplo del pedido: la editada queda solapada y antes de su hora de inicio
+    let ui = pantalla([
+        cc("A", "EQ-A", hhmm(7), "equipo30", "07:00"),
+        cc("B", "EQ-B", hhmm(9), "sin10", "09:00")
+    ]);
+    toasts.length = 0;
+    ui.hora("B", "07:10"); ui.estado("27a. B -> 07:10 (A ocupa 07:00-07:30, B inicia 09:00)");
+    check("27a: el campo de B muestra las dos alertas, con el texto de hoy",
+        ui.campo.B === TXT.solape + " " + TXT.antesDeInicio, ui.campo.B);
+    check("27a: A no alerta", ui.campo.A === "");
+    check("27a: sin toast", toasts.length === 0, toasts.join(" | "));
+
+    // 27b. Rango prohibido sobre la fila alertada: el MessageBox no cambia y el campo
+    // vacío pierde la alerta (ya no la limpia el timeout de 4")
+    toasts.length = 0; messageBoxes.length = 0;
+    ui.hora("B", "06:00"); ui.estado("27b. B -> 06:00 (rango prohibido)");
+    check("27b: el rango prohibido sigue con su MessageBox",
+        messageBoxes.length === 1 && messageBoxes[0] === "invalidShiftTimeRange", messageBoxes.join(" | "));
+    check("27b: B queda vacía y sin la alerta del motor", t(ui.data, "B") === "" && ui.campo.B === "", ui.campo.B);
+    check("27b: sin toast", toasts.length === 0, toasts.join(" | "));
+
+    // 27c. Cada fila con SU alerta, y el mensaje dura lo que dura el conflicto
+    ui = pantalla([
+        cc("A", "EQ-A", hhmm(7), "equipo30", "07:00"),
+        cc("B", "EQ-B", hhmm(7), "equipo30", "07:30"),
+        cc("C", "EQ-C", hhmm(7), "sin10", "08:00"),
+        cc("D", "EQ-D", hhmm(7), "sin10", "08:10")
+    ]);
+    toasts.length = 0;
+    ui.hora("C", "07:45"); ui.estado("27c-1. C -> 07:45 (B ocupa 07:30-08:00)");
+    check("27c-1: C alerta solape", ui.campo.C === TXT.solape, ui.campo.C);
+
+    ui.hora("B", "07:20"); ui.estado("27c-2. B -> 07:20: solapa con A y pisa a C (fijada)");
+    check("27c-2: B (editada) muestra solo solape", ui.campo.B === TXT.solape, ui.campo.B);
+    check("27c-2: C (fijada pisada) muestra solo solapeFijada", ui.campo.C === TXT.solapeFijada, ui.campo.C);
+    check("27c-2: C no se mueve", t(ui.data, "C") === "07:45");
+    check("27c-2: A y D sin alerta", ui.campo.A === "" && ui.campo.D === "");
+
+    ui.hora("D", "09:00"); ui.estado("27c-3. D -> 09:00 (después de la fijada)");
+    check("27c-3: editar más abajo no borra las alertas de B y C (el conflicto sigue)",
+        ui.campo.B === TXT.solape && ui.campo.C === TXT.solapeFijada, ui.campo.B + " / " + ui.campo.C);
+
+    // Pasan los segundos: se disparan los timers que programó la app. Los de UI (alto de
+    // filas) fallan sin DOM y se ignoran; ninguno puede borrar las alertas.
+    timers.splice(0).forEach(tm => { try { tm.fn(); } catch (e) { /* sin DOM */ } });
+    check("27c-3: pasado el tiempo, B y C siguen alertando",
+        ui.campo.B === TXT.solape && ui.campo.C === TXT.solapeFijada &&
+        L(ui.data, "B").TurnoWarning === TXT.solape && L(ui.data, "C").TurnoWarning === TXT.solapeFijada);
+
+    ui.hora("B", "07:30"); ui.estado("27c-4. B -> 07:30: ya no solapa con A, sigue pisando a C");
+    check("27c-4: B deja de alertar", ui.campo.B === "", ui.campo.B);
+    check("27c-4: C sigue alertando", ui.campo.C === TXT.solapeFijada, ui.campo.C);
+
+    ui.hora("C", ""); ui.estado("27c-5. se borra la hora de C (P-07)");
+    check("27c-5: C liberada vuelve a 08:00 y deja de alertar", t(ui.data, "C") === "08:00" && ui.campo.C === "", ui.campo.C);
+    check("27c: ningún paso mostró toast", toasts.length === 0, toasts.join(" | "));
+
+    // 27d. Carga de un turno con Orden: la nueva pisa una fijada; la alerta queda en la
+    // fijada (no hay fila editada)
+    const r = flujoCargaGuardada([
+        lic("S8", "EQ-1", "1AC", hhmm(8), "linea45", { Orden: 1, TurnosLicencias_nav: nav("08:00") }),
+        lic("S9", "EQ-2", "1AC", hhmm(9), "linea45", { Orden: 2, Fijado: true, TurnosLicencias_nav: nav("09:00") }),
+        lic("S10", "EQ-3", "1AC", hhmm(10), "sin10", { Orden: 3, TurnosLicencias_nav: nav("10:00") }),
+        lic("N", "EQ-N", "1AC", hhmm(8, 30), "linea45")
+    ]);
+    const w = (id) => L(r.a, id).TurnoWarning || "";
+    console.log("  27d carga  : " + horas(r.a) + "  S9=[" + w("S9") + "]");
+    check("27d: la alerta queda en S9 (la fijada pisada)", w("S9") === TXT.solapeFijada, w("S9"));
+    check("27d: N, S8 y S10 sin alerta", w("N") === "" && w("S8") === "" && w("S10") === "");
+
+    // 27e. "+ Licencias" sobre una pantalla sin alertas: la nueva pisa una fijada y la
+    // alerta tiene que llegar al campo de la fijada (se marca antes del refresh)
+    ui = pantalla([
+        cc("F1", "EQ-F1", hhmm(8), "linea45", "08:00"),
+        cc("F2", "EQ-F2", hhmm(8), "sin10", "08:45", { Fijado: true })
+    ]);
+    toasts.length = 0;
+    ui.agregar([cc("NV", "EQ-NV", hhmm(8, 10), "linea45", "", { Orden: 0 })]);
+    ui.estado("27e. \"+ Licencias\": NV (08:10, 45') entra antes de F2 fijada en 08:45");
+    check("27e: NV = 08:45 y F2 fijada no se mueve", t(ui.data, "NV") === "08:45" && t(ui.data, "F2") === "08:45");
+    check("27e: el campo de F2 muestra solapeFijada", ui.campo.F2 === TXT.solapeFijada, ui.campo.F2);
+    check("27e: F1 y NV sin alerta, sin toast", ui.campo.F1 === "" && ui.campo.NV === "" && toasts.length === 0, toasts.join(" | "));
+
+    // 27f. El mensaje se ve en todas las consolas: valueState = color de la consola,
+    // salvo que la consola quede en Success o None (UI5 no muestra el mensaje) y haya alerta
+    const vs = (c, w) => Fmt.turnoColor(c, w);
+    check("27f: CENTRO-CUYO en Error, con y sin alerta", vs("CENTRO-CUYO", "") === "Error" && vs("CENTRO-CUYO", TXT.solape) === "Error");
+    check("27f: NOA / NEA / LITORAL conservan su color con alerta",
+        vs("NOA", TXT.solape) === "Warning" && vs("NEA", TXT.solape) === "Information" && vs("LITORAL", TXT.solape) === "Information");
+    check("27f: SUR / METRO-SUR: Success sin alerta, Error con alerta",
+        vs("SUR", "") === "Success" && vs("METRO-SUR", undefined) === "Success" &&
+        vs("SUR", TXT.solape) === "Error" && vs("METRO-SUR", TXT.solapeFijada) === "Error");
+    check("27f: consola sin color: None sin alerta, Error con alerta", vs("1AC", "") === "None" && vs("1AC", TXT.solape) === "Error");
+    check("27f: sin alerta, el texto del campo sigue siendo un espacio", Fmt.turnoWarningText("") === " " && Fmt.turnoWarningText(TXT.solape) === TXT.solape);
+}
+
+console.log("\n=== Punto 14 en toda la corrida ===");
+check("ninguna alerta del motor pasó por MessageHelper (toast)", !toastsTodos.some(esAlertaMotor),
+    toastsTodos.filter(esAlertaMotor).join(" | "));
 
 console.log("\n==================================================");
 console.log(fail === 0 ? `TODO OK  (${pass} checks)` : `${fail} FALLAS de ${pass + fail} checks`);

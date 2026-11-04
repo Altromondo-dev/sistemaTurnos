@@ -425,7 +425,12 @@ sap.ui.define([
         //                        En los dos últimos casos, si quedó pisado se alerta
         //                        "solapeFijada" sin modificarlo.
         //
-        // Devuelve { alertas: [{ consola, grupo, tipo, turno, minimo }] }.
+        // Devuelve { alertas: [{ consola, grupo, tipo, turno, minimo }],
+        //            evaluados: [{ consola, grupo }] }.
+        // evaluados = bloques recorridos desde desdeGrupo hasta donde se detuvo la cascada:
+        // sus alertas anteriores dejan de valer y las reemplazan las de esta pasada. Los
+        // demás bloques no cambiaron ni cambió lo que tienen antes, así que su alerta
+        // (si tenían) sigue vigente.
         recalcularDesde: function (licences, oOpciones) {
             const oOpts = oOpciones || {};
             const sConsola = oOpts.consola || "";
@@ -438,6 +443,7 @@ sap.ui.define([
 
             const aGrupos = this._agruparPorConsola(licences, sConsola, oOpts.orden, oFijos);
             const aAlertas = [];
+            const aEvaluados = [];
 
             let iCursor = iInicial;
             let bDetenido = false;
@@ -455,6 +461,8 @@ sap.ui.define([
                     }
                     return;
                 }
+
+                aEvaluados.push({ consola: sConsola, grupo: oGrupo.grupo });
 
                 // Bloque fijado por el operador (RN-03/04): su valor es la referencia
                 if (!bAncla && sAlFijada !== "ignorar" && oGrupo.fijado && iActual != null) {
@@ -503,7 +511,7 @@ sap.ui.define([
                 iCursor = iTurno + oGrupo.duracion;
             });
 
-            return { alertas: aAlertas };
+            return { alertas: aAlertas, evaluados: aEvaluados };
         },
 
         // Bloques de una consola: clave = Grupo (o Equnr), salvo las licencias fijas, que
@@ -633,7 +641,7 @@ sap.ui.define([
         // Carga de un turno guardado con Orden: las guardadas se muestran en su orden
         // (consola alfabética -> Orden) y las nuevas (Orden 0) se ubican por hora de
         // inicio. Trabaja sobre el array recibido. Espera los grupos ya armados
-        // (_rebuildFrontendGroupsByEquipo). Devuelve { alertas } del motor.
+        // (_rebuildFrontendGroupsByEquipo). Devuelve { alertas, evaluados } del motor.
         cargarConOrden: function (aLicences) {
             const aGuardadas = aLicences.filter((l) => Number(l.Orden) > 0);
             const aNuevas = aLicences.filter((l) => !(Number(l.Orden) > 0));
@@ -656,9 +664,10 @@ sap.ui.define([
         //  - Si no: antes del primer bloque de su consola que arranca después de su hora
         //    de inicio; turno = max(anterior + separación, inicio). Las filas de abajo
         //    se empujan solo si quedan pisadas y las fijadas no se mueven (alerta).
-        // Devuelve { alertas } del motor.
+        // Devuelve { alertas, evaluados } del motor.
         ubicarNuevas: function (aLicences, aNuevas) {
             const aAlertas = [];
+            const aEvaluados = [];
             const oSinTurno = new Set();
             const oConsolas = new Set();
 
@@ -731,9 +740,10 @@ sap.ui.define([
                     alFijada: "anclar"
                 });
                 oRes.alertas.forEach((a) => aAlertas.push(a));
+                oRes.evaluados.forEach((e) => aEvaluados.push(e));
             });
 
-            return { alertas: aAlertas };
+            return { alertas: aAlertas, evaluados: aEvaluados };
         },
 
         // Posición de una licencia nueva: antes del primer bloque de su consola cuya hora
