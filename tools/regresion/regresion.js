@@ -6,6 +6,7 @@
 //                         14a-2: RN-02, Fijado (RN-03/04, P-03, P-04, P-07), Orden (P-06),
 //                         licencias nuevas por hora de inicio (P-05), desacople en su lugar
 //                         punto 14: alertas del motor solo en el campo de la fila afectada
+//                         ajuste 14a-2: el motor no tiene en cuenta la consola
 const { loadModule, timers } = require("./harness");
 
 const Svc = loadModule("transener/sistemadeturnos/services/TurnosService");
@@ -703,7 +704,10 @@ console.log("\n=== 23. Varias consolas y licencias eliminadas ===");
         lic("B2", "EQ-B2", "2BC", hhmm(7), "sin10", { TurnoAsignado: "07:10", Grupo: "solo_B2" })
     ];
     editar(d, "A1", "09:00");
-    check("la cascada de 1AC no toca 2BC", t(d, "A2") === "09:10" && t(d, "B1") === "07:00" && t(d, "B2") === "07:10");
+    // Ajuste 14a-2 (pedido de Juan): la cascada no tiene en cuenta la consola
+    // check("la cascada de 1AC no toca 2BC", t(d, "A2") === "09:10" && t(d, "B1") === "07:00" && t(d, "B2") === "07:10");
+    check("la cascada de 1AC sigue en 2BC (una sola secuencia): 09:10 / 09:20 / 09:30",
+        t(d, "A2") === "09:10" && t(d, "B1") === "09:20" && t(d, "B2") === "09:30", horas(d));
     d.splice(1, 1); // onDeletePress
     Svc.numerarOrden(d);
     check("eliminada: Orden 1..n sin huecos y el resto conserva su orden",
@@ -853,6 +857,7 @@ console.log("\n=== 26. Bug QAS 14a-2 (29.10.2026, CENTRO-CUYO): la cascada no em
     ui.hora("L202600275", "10:00"); ui.estado("1. bloque 1AC-DEH1 -> 10:00");
     check("1: 1AC-BVI1 -> 10:15 (10:00 + TcT 15')", t(ui.data, BVI1) === "10:15");
     check("1: el bloque 1AC-DEH1 queda fijado", deh(l => l.Fijado === true));
+    check("1: 5APA (NEA) sigue la cascada aunque sea de otra consola: 10:25", t(ui.data, "L5APA") === "10:25", t(ui.data, "L5APA"));
 
     ui.hora("L202600275", "09:50"); ui.estado("2. bloque 1AC-DEH1 -> 09:50");
     check("2: 1AC-BVI1 se adelanta a 10:05 (P-04)", t(ui.data, BVI1) === "10:05");
@@ -870,7 +875,10 @@ console.log("\n=== 26. Bug QAS 14a-2 (29.10.2026, CENTRO-CUYO): la cascada no em
         ui.campo[BVI1] === TXT.solapeFijada, ui.campo[BVI1]);
     check("4: el bloque editado 1AC-DEH1 no alerta", deh(l => ui.campo[l.Id] === ""));
     check("4: sin toast", toasts.length === 0, toasts.join(" | "));
-    check("4: 5APA (NEA) no se toca", t(ui.data, "L5APA") === "07:00");
+    // Ajuste 14a-2: 5APA ya siguió la cascada en los pasos 1 a 3; acá queda después de la
+    // fijada 1AC-BVI1, que frena la cascada aunque 5APA sea de otra consola
+    // check("4: 5APA (NEA) no se toca", t(ui.data, "L5APA") === "07:00");
+    check("4: 5APA (NEA), después de la fijada, no se toca (11:10)", t(ui.data, "L5APA") === "11:10", t(ui.data, "L5APA"));
 
     // Punto 4 del pedido: el mismo choque por los otros caminos
     toasts.length = 0;
@@ -1002,6 +1010,79 @@ console.log("\n=== 27. Punto 14: alertas del motor en el campo de la fila afecta
         vs("SUR", TXT.solape) === "Error" && vs("METRO-SUR", TXT.solapeFijada) === "Error");
     check("27f: consola sin color: None sin alerta, Error con alerta", vs("1AC", "") === "None" && vs("1AC", TXT.solape) === "Error");
     check("27f: sin alerta, el texto del campo sigue siendo un espacio", Fmt.turnoWarningText("") === " " && Fmt.turnoWarningText(TXT.solape) === TXT.solape);
+}
+
+console.log("\n=== 28. Ajuste 14a-2: la cascada no tiene en cuenta la consola (QAS, CENTRO-CUYO + NOA) ===");
+{
+    // Caso del pedido: turno ya creado, consolas en el orden de pantalla. Se edita la primera
+    // fila de 1AMEM1 (CENTRO-CUYO) a 11:00 y las de NOA que están debajo tienen que correrse.
+    const fila2 = (Id, Equnr, Consola, inicio, turno, extra) => lic(Id, Equnr, Consola, inicio, "sin10",
+        Object.assign({ TurnoAsignado: turno }, extra || {}));
+    const qas = () => [
+        fila2("AMEM-1", "1AMEM1", "CENTRO-CUYO", hhmm(8), "08:00"),
+        fila2("AMEM-2", "1AMEM1", "CENTRO-CUYO", hhmm(8), "08:00"),
+        fila2("EMV", "1EM-VSI1", "CENTRO-CUYO", hhmm(9), "09:00"),
+        fila2("BR-1", "1BR-TR1", "NOA", hhmm(8), "08:00"),
+        fila2("BR-2", "1BR-TR1", "NOA", hhmm(8), "08:00"),
+        fila2("AJ", "1AJ-TR1", "NOA", hhmm(10), "10:00")
+    ];
+    const pantalla = (d) => { Ctrl._rebuildFrontendGroupsByEquipo(d); return pantallaUI(d); };
+
+    // 28a. El caso de QAS
+    let ui = pantalla(qas());
+    toasts.length = 0;
+    ui.hora("AMEM-1", "11:00"); ui.estado("28a. 1AMEM1 (CENTRO-CUYO) -> 11:00");
+    check("28a: 1AMEM1 en 11:00 y fijado", t(ui.data, "AMEM-1") === "11:00" && t(ui.data, "AMEM-2") === "11:00" &&
+        L(ui.data, "AMEM-1").Fijado === true && L(ui.data, "AMEM-2").Fijado === true);
+    check("28a: la otra de CENTRO-CUYO se corre a 11:10", t(ui.data, "EMV") === "11:10");
+    check("28a: las de NOA de abajo también se corren: BR 11:20 / 11:20, AJ 11:30",
+        t(ui.data, "BR-1") === "11:20" && t(ui.data, "BR-2") === "11:20" && t(ui.data, "AJ") === "11:30", horas(ui.data));
+    check("28a: el orden no cambia y solo 1AMEM1 queda fijado",
+        ids(ui.data) === "AMEM-1,AMEM-2,EMV,BR-1,BR-2,AJ" && ui.data.filter(l => l.Fijado).length === 2);
+    check("28a: sin alertas ni toast", ui.data.every(l => ui.campo[l.Id] === "") && toasts.length === 0);
+
+    // 28b. P-04 hacia atrás: las de NOA se adelantan, pero sin volver a 08:00 (CENTRO-CUYO
+    // ocupa la secuencia hasta las 09:10)
+    ui.hora("AMEM-1", "08:00"); ui.estado("28b. 1AMEM1 -> 08:00");
+    check("28b: EMV vuelve a su inicio (09:00)", t(ui.data, "EMV") === "09:00");
+    check("28b: BR se adelanta a 09:10 (sigue a EMV), no a 08:00", t(ui.data, "BR-1") === "09:10" && t(ui.data, "BR-2") === "09:10", horas(ui.data));
+    check("28b: AJ vuelve a su inicio (10:00)", t(ui.data, "AJ") === "10:00");
+
+    // 28c. Una fijada de NOA frena la cascada que viene de CENTRO-CUYO, y la alerta queda
+    // en su campo
+    ui.hora("AJ", "10:00"); ui.estado("28c-1. AJ (NOA) fijada a mano en 10:00");
+    check("28c-1: AJ fijada, sin alerta", L(ui.data, "AJ").Fijado === true && ui.campo.AJ === "");
+    ui.hora("AMEM-1", "11:00"); ui.estado("28c-2. 1AMEM1 -> 11:00 con AJ fijada");
+    check("28c-2: EMV 11:10 y BR 11:20", t(ui.data, "EMV") === "11:10" && t(ui.data, "BR-1") === "11:20");
+    check("28c-2: AJ fijada no se mueve (10:00)", t(ui.data, "AJ") === "10:00");
+    check("28c-2: el campo de AJ (NOA) muestra solapeFijada", ui.campo.AJ === TXT.solapeFijada, ui.campo.AJ);
+    check("28c-2: la editada y las recalculadas no alertan",
+        ["AMEM-1", "AMEM-2", "EMV", "BR-1", "BR-2"].every(id => ui.campo[id] === ""));
+
+    // 28d. Editar una fila de NOA: las filas de CENTRO-CUYO de arriba ahora cuentan para la
+    // separación mínima
+    ui.hora("BR-1", "08:00"); ui.estado("28d. BR (NOA) -> 08:00, debajo de EMV en 11:10");
+    check("28d: BR conserva 08:00 y alerta solape con la fila anterior (de otra consola)",
+        t(ui.data, "BR-1") === "08:00" && ui.campo["BR-1"] === TXT.solape && ui.campo["BR-2"] === TXT.solape, ui.campo["BR-1"]);
+    check("28d: AJ ya no está pisada: su alerta se limpia", ui.campo.AJ === "", ui.campo.AJ);
+    check("28d: ningún paso mostró toast", toasts.length === 0, toasts.join(" | "));
+
+    // 28e. Desacoplar en CENTRO-CUYO: la cascada sigue en NOA
+    ui = pantalla([
+        fila2("V1", "1EM-VSI1", "CENTRO-CUYO", hhmm(8), "08:00"),
+        fila2("V2", "1EM-VSI1", "CENTRO-CUYO", hhmm(9), "08:00"),
+        fila2("N1", "1BR-TR1", "NOA", hhmm(8), "08:00")
+    ]);
+    ui.desacoplar("V2"); ui.estado("28e. se desacopla V2 (CENTRO-CUYO, inicio 09:00)");
+    check("28e: V2 = 09:00 (su inicio) y N1 (NOA) se corre a 09:10", t(ui.data, "V2") === "09:00" && t(ui.data, "N1") === "09:10", horas(ui.data));
+
+    // 28f. Fila sin consola: antes la edición no recalculaba nada; ahora la cascada corre
+    ui = pantalla([
+        fila2("S1", "EQ-S1", "", hhmm(7), "07:00"),
+        fila2("S2", "EQ-S2", "NOA", hhmm(7), "07:10")
+    ]);
+    ui.hora("S1", "09:00"); ui.estado("28f. S1 (sin consola) -> 09:00");
+    check("28f: S1 fijada en 09:00 y S2 se corre a 09:10", L(ui.data, "S1").Fijado === true && t(ui.data, "S2") === "09:10", horas(ui.data));
 }
 
 console.log("\n=== Punto 14 en toda la corrida ===");

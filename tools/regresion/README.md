@@ -86,7 +86,11 @@ controllers:
   posteriores. P-04: las no fijadas toman `max(cursor, inicioBloque)`, o sea se
   adelantan o se atrasan. P-03: la cascada se detiene en la siguiente fijada y no
   la modifica; si quedó pisada, alerta `solapeFijada`. P-07: borrar la hora libera
-  el bloque.
+  el bloque. Ajuste 14a-2 (pedido de Juan): la cascada **no tiene en cuenta la
+  consola**: recorre todas las filas posteriores en el orden de pantalla, de cualquier
+  consola, la frena la siguiente fijada aunque sea de otra consola, y la separación
+  mínima de una fila editada se mide contra la fila anterior aunque sea de otra
+  consola. El desacople y el borrado de la hora siguen la misma regla.
 - **Orden persistido** (P-06) — al recargar se respeta el orden guardado y no se
   recalcula nada si no hay licencias nuevas. Un turno anterior a 14a-2 (todo
   `Orden` 0) se muestra igual que en 14a-1.
@@ -160,8 +164,8 @@ controllers:
     nueva entra en su lugar alfabético; las otras consolas no se tocan.
 22. **Turno anterior a 14a-2** — mismo resultado que 14a-1 y el primer guardado
     migra el `Orden` de todas las filas.
-23. **Varias consolas y eliminadas** — la cascada no cruza de consola; tras eliminar,
-    `numerarOrden` deja 1..n sin huecos.
+23. **Varias consolas y eliminadas** — la cascada sigue en la consola de abajo
+    (ajuste 14a-2); tras eliminar, `numerarOrden` deja 1..n sin huecos.
 24. **Desacoplar** (Figura 4) — la desacoplada queda inmediatamente después de su
     bloque, sin fijar, con `max(cursor, inicio)`; la cascada sigue y se detiene en la
     fijada; varias desacopladas quedan consecutivas; desacoplar de un bloque fijado
@@ -190,6 +194,9 @@ controllers:
     `Fijado = true`): el controller marca la fila, pero el motor viejo no conoce
     `alFijada` ni `g.fijado`. Los dos archivos tienen que desplegarse juntos.
 
+    Con el ajuste 14a-2, 5APA (NEA) sigue la cascada de CENTRO-CUYO en los pasos 1 a 3
+    y desde el paso 4 queda detrás de la fijada 1AC-BVI1, que la frena.
+
 27. **Punto 14: alertas en el campo de la fila afectada, sin toast** — (a) el ejemplo
     del pedido: la editada solapa y arranca antes de su inicio, su campo muestra los
     dos textos; (b) el rango prohibido sigue con su MessageBox y el campo vaciado
@@ -200,6 +207,14 @@ controllers:
     llega al campo de la fijada; (f) `turnoColor`: el mensaje se ve en todas las
     consolas. Al final de la corrida se verifica que **ninguna** alerta del motor haya
     pasado por `MessageHelper` en ningún escenario.
+
+28. **Ajuste 14a-2: la cascada no tiene en cuenta la consola** — el caso de QAS por
+    los handlers reales: 1AMEM1 (CENTRO-CUYO) → 11:00 corre también las de NOA de abajo
+    (BR 11:20, AJ 11:30). Además: (b) al volver 1AMEM1 a 08:00, BR se adelanta pero
+    queda en 09:10, detrás de CENTRO-CUYO; (c) una fijada de NOA frena la cascada que
+    viene de CENTRO-CUYO y la alerta `solapeFijada` queda en su campo; (d) editar una
+    fila de NOA por debajo del fin de CENTRO-CUYO alerta `solape`; (e) desacoplar en
+    CENTRO-CUYO corre la de NOA; (f) una fila sin consola también dispara la cascada.
 
 `harness.js` no ejecuta los `setTimeout` de la app (no hay UI que refrescar y el
 proceso no debe quedar esperando): los registra en `timers` para que la regresión los

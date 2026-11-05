@@ -3634,6 +3634,10 @@ sap.ui.define([
         // (campo vaciado). La regla, RN-01 y el criterio de alertas viven en
         // TurnosService.recalcularDesde, el mismo motor que usa la asignación inicial.
         //
+        // Ajuste 14a-2 (pedido de Juan): la cascada no tiene en cuenta la consola. Recorre
+        // todas las filas posteriores en el orden de pantalla, de cualquier consola (o sin
+        // consola), y la frena la siguiente fijada aunque sea de otra consola.
+        //
         // Devuelve las licencias que quedaron con alerta (TurnoWarning).
         _recalcularDesde: function (aLicences, iStartIndex) {
             if (iStartIndex < 0 || iStartIndex >= aLicences.length) {
@@ -3641,15 +3645,10 @@ sap.ui.define([
             }
 
             var oBase = aLicences[iStartIndex];
-            var sConsola = oBase.Consola || "";
-
-            if (!sConsola) {
-                return [];
-            }
 
             var sGrupoEditado = oBase.Grupo || oBase.Equnr || "";
 
-            var aGrupos = TurnosService._agruparPorConsola(aLicences, sConsola, "visual", null);
+            var aGrupos = TurnosService._agruparPorConsola(aLicences, null, "visual", null);
             var iDesdeGrupo = aGrupos.findIndex(function (g) {
                 return g.items.indexOf(oBase) !== -1;
             });
@@ -3662,7 +3661,7 @@ sap.ui.define([
             // en ambos sentidos (respetarValorActual: false), y la cascada se detiene en la
             // siguiente fijada sin modificarla.
             var oResultado = TurnosService.recalcularDesde(aLicences, {
-                consola: sConsola,
+                consola: null,
                 desdeGrupo: iDesdeGrupo,
                 orden: "visual",
                 anclas: [sGrupoEditado],
@@ -3768,14 +3767,16 @@ sap.ui.define([
         // Devuelve las licencias que quedaron con alerta.
         // FIN MOD TRNS #SistemaDeTurno-14
         _recalculateEmptyShift: function (aLicences, oSelectedLicence, iLicenseIndex) {
-            const consola = oSelectedLicence.Consola;
-
-            if (!consola) {
-                // INI MOD TRNS #SistemaDeTurno-14
-                // return;
-                return [];
-                // FIN MOD TRNS #SistemaDeTurno-14
-            }
+            // INI MOD TRNS #SistemaDeTurno-14
+            // Ajuste 14a-2: la cascada no tiene en cuenta la consola (ver _recalcularDesde);
+            // una fila sin consola también recalcula
+            // const consola = oSelectedLicence.Consola;
+            //
+            // if (!consola) {
+            //     // return;
+            //     return [];
+            // }
+            // FIN MOD TRNS #SistemaDeTurno-14
 
             // 1) Actualizar el grupo actual a vacío
             this._updateSameGroupAndConsoleShifts(aLicences, oSelectedLicence, "");
@@ -3787,14 +3788,14 @@ sap.ui.define([
             // 2) El grupo vaciado y los siguientes los recalcula el motor único.
             //    Sin anclas: el grupo vaciado toma max(cursor, hora de inicio); los
             //    posteriores no fijados se adelantan o atrasan (P-04) hasta la siguiente
-            //    fijada (P-03).
-            const aGrupos = TurnosService._agruparPorConsola(aLicences, consola, "visual", null);
+            //    fijada (P-03). Ajuste 14a-2: sin separar por consola.
+            const aGrupos = TurnosService._agruparPorConsola(aLicences, null, "visual", null);
             const iDesdeGrupo = aGrupos.findIndex(g => g.items.indexOf(oSelectedLicence) !== -1);
 
             let aWarningItems = [];
             if (iDesdeGrupo !== -1) {
                 aWarningItems = this._mostrarAlertasMotor(aLicences, TurnosService.recalcularDesde(aLicences, {
-                    consola: consola,
+                    consola: null,
                     desdeGrupo: iDesdeGrupo,
                     orden: "visual",
                     anclas: [],
@@ -4359,7 +4360,8 @@ sap.ui.define([
         //  - Queda inmediatamente después de su bloque; si del mismo bloque ya se habían
         //    desacoplado otras, después de ellas (quedan consecutivas).
         //  - Sin fijar, con turno max(cursor, inicio); la cascada sigue desde ahí y se
-        //    detiene en la siguiente fijada (P-03).
+        //    detiene en la siguiente fijada (P-03). Ajuste 14a-2: la cascada sigue en las
+        //    filas de abajo aunque sean de otra consola.
         // Las alertas del motor quedan en la fila afectada. Devuelve las licencias que
         // quedaron con alerta.
         _desacoplarEnLugar: function (aLicences, oLicence, iIndiceOriginal) {
@@ -4397,7 +4399,7 @@ sap.ui.define([
             aLicences.splice(iInsertar, 0, oLicence);
             this._rebuildFrontendGroupsByEquipo(aLicences);
 
-            var aGrupos = TurnosService._agruparPorConsola(aLicences, sConsola, "visual", null);
+            var aGrupos = TurnosService._agruparPorConsola(aLicences, null, "visual", null);
             var iDesdeGrupo = aGrupos.findIndex(function (g) {
                 return g.items.indexOf(oLicence) !== -1;
             });
@@ -4406,7 +4408,7 @@ sap.ui.define([
             }
 
             return this._mostrarAlertasMotor(aLicences, TurnosService.recalcularDesde(aLicences, {
-                consola: sConsola,
+                consola: null,
                 desdeGrupo: iDesdeGrupo,
                 orden: "visual",
                 anclas: [],

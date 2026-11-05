@@ -386,7 +386,7 @@ sap.ui.define([
         // (assignShiftsToLicences, _cascadeGroupsDown y
         // _recalculateEmptyShift/_recalculateFollowingGroups).
         //
-        // Regla, recorriendo los bloques de UNA consola:
+        // Regla, recorriendo los bloques de UNA consola (o de todas, con consola null):
         //
         //   inicioBloque = hora de inicio del bloque (ver _inicioBloque)  -> RN-01
         //   durBloque    = max(duration de sus licencias)                 -> separación
@@ -407,6 +407,9 @@ sap.ui.define([
         //
         // Opciones:
         //   consola              consola a recalcular (el motor trabaja de a una)
+        //                        null -> todas las consolas en una sola secuencia, en el
+        //                        orden recibido (ajuste 14a-2: la cascada al editar no
+        //                        tiene en cuenta la consola)
         //   desdeGrupo           índice del primer bloque a recalcular; los previos solo
         //                        alimentan el cursor
         //   inicial              minutos del primer turno posible (por defecto 07:00)
@@ -433,7 +436,7 @@ sap.ui.define([
         // (si tenían) sigue vigente.
         recalcularDesde: function (licences, oOpciones) {
             const oOpts = oOpciones || {};
-            const sConsola = oOpts.consola || "";
+            const sConsola = oOpts.consola === null ? null : (oOpts.consola || "");
             const iInicial = oOpts.inicial != null ? oOpts.inicial : 7 * 60;
             const iDesdeGrupo = oOpts.desdeGrupo != null ? oOpts.desdeGrupo : 0;
             const aAnclas = oOpts.anclas || [];
@@ -462,13 +465,14 @@ sap.ui.define([
                     return;
                 }
 
-                aEvaluados.push({ consola: sConsola, grupo: oGrupo.grupo });
+                // Con consola null la pasada recorre varias: cada bloque lleva la suya
+                aEvaluados.push({ consola: oGrupo.consola, grupo: oGrupo.grupo });
 
                 // Bloque fijado por el operador (RN-03/04): su valor es la referencia
                 if (!bAncla && sAlFijada !== "ignorar" && oGrupo.fijado && iActual != null) {
                     if (iActual < iCursor) {
                         aAlertas.push({
-                            consola: sConsola, grupo: oGrupo.grupo, tipo: "solapeFijada",
+                            consola: oGrupo.consola, grupo: oGrupo.grupo, tipo: "solapeFijada",
                             turno: iActual, minimo: iCursor
                         });
                     }
@@ -487,13 +491,13 @@ sap.ui.define([
 
                     if (iTurno < iCursor) {
                         aAlertas.push({
-                            consola: sConsola, grupo: oGrupo.grupo, tipo: "solape",
+                            consola: oGrupo.consola, grupo: oGrupo.grupo, tipo: "solape",
                             turno: iTurno, minimo: iCursor
                         });
                     }
                     if (oGrupo.inicio != null && iTurno < oGrupo.inicio) {
                         aAlertas.push({
-                            consola: sConsola, grupo: oGrupo.grupo, tipo: "antesDeInicio",
+                            consola: oGrupo.consola, grupo: oGrupo.grupo, tipo: "antesDeInicio",
                             turno: iTurno, minimo: oGrupo.inicio
                         });
                     }
@@ -516,18 +520,22 @@ sap.ui.define([
 
         // Bloques de una consola: clave = Grupo (o Equnr), salvo las licencias fijas, que
         // forman bloque propio igual que antes hacían al salir por "return".
+        // sConsola null: bloques de todas las consolas, en una sola secuencia.
         _agruparPorConsola: function (licences, sConsola, sOrden, oFijos) {
             const mGrupos = {};
             const oSetFijos = oFijos || new Set();
 
             (licences || []).forEach((lic, idx) => {
-                if ((lic.Consola || "") !== sConsola) return;
+                if (sConsola !== null && (lic.Consola || "") !== sConsola) return;
 
                 const bFijo = oSetFijos.has(lic.Id);
                 const sClave = bFijo ? "fijo_" + lic.Id : (lic.Grupo || lic.Equnr || "");
 
                 if (!mGrupos[sClave]) {
-                    mGrupos[sClave] = { grupo: sClave, items: [], firstIndex: idx, fijo: bFijo };
+                    mGrupos[sClave] = {
+                        grupo: sClave, items: [], firstIndex: idx, fijo: bFijo,
+                        consola: lic.Consola || ""
+                    };
                 }
                 mGrupos[sClave].items.push(lic);
                 if (idx < mGrupos[sClave].firstIndex) {
