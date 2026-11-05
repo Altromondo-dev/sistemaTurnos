@@ -169,6 +169,157 @@ sap.ui.define([
                 "CC": "Condicionada"
             };
             return mEstados[sEstado] || sEstado;
+        // INI MOD TRNS #TT-390
+        // }
+        },
+
+        /**
+         * Catálogos para armar empresasTextoPlano, los mismos que usa LLTT:
+         * EmpresasLTSet (Codigo / Descripcion) y FixedValuesSet ZTAB_OP_TRALIC-ESTADO (Valkey / Valtext).
+         * Nunca rechaza: si una lectura falla, ese catálogo queda vacío y el texto sale con los códigos.
+         * @param {sap.ui.model.odata.v2.ODataModel} oModel - Modelo OData
+         * @param {string} sEmpresa - Sociedad actual
+         * @returns {Promise<{empresas: Array, estados: Array}>}
+         */
+        getCatalogosEmpresasTexto: function (oModel, sEmpresa) {
+            const fnLeer = (sEntity, aFilters) => new Promise((resolve) => {
+                oModel.read(sEntity, {
+                    filters: aFilters,
+                    success: (oData) => resolve(oData.results || []),
+                    error: () => resolve([])
+                });
+            });
+
+            return Promise.all([
+                fnLeer("/EmpresasLTSet", [new Filter("Empresa", FilterOperator.EQ, sEmpresa)]),
+                fnLeer("/FixedValuesSet", [
+                    new Filter("Tabname", FilterOperator.EQ, "ZTAB_OP_TRALIC"),
+                    new Filter("Fieldname", FilterOperator.EQ, "ESTADO")
+                ])
+            ]).then(([aEmpresas, aEstados]) => ({ empresas: aEmpresas, estados: aEstados }));
+        },
+
+        /**
+         * Tramitaciones de una licencia con sus fechas de calendario (LicenciaEstadoDiarioSet).
+         * Rechaza si la lectura falla, para distinguir "sin trámites" de "no se pudo leer".
+         * @param {sap.ui.model.odata.v2.ODataModel} oModel - Modelo OData
+         * @param {Object} oLicense - Licencia (Empresa, Id, Tipo, Anio)
+         * @returns {Promise<Array>} Tramitaciones, cada una con CalendarDates
+         */
+        getTramitacionesLicencia: function (oModel, oLicense) {
+            return new Promise((resolve, reject) => {
+                const sPath = oModel.createKey("/LicenciaTrabajoSet", {
+                    Empresa: oLicense.Empresa,
+                    Id: oLicense.Id,
+                    Tipo: oLicense.Tipo || "L",
+                    Anio: oLicense.Anio
+                });
+
+                oModel.read(sPath, {
+                    urlParameters: {
+                        "$expand": "TramitacionesLicencia_nav/LicenciaEstadoDiarioSet"
+                    },
+                    success: (oData) => {
+                        const aTramites = (oData.TramitacionesLicencia_nav && oData.TramitacionesLicencia_nav.results) || [];
+                        resolve(aTramites.map(oTramite => Object.assign({}, oTramite, {
+                            CalendarDates: (oTramite.LicenciaEstadoDiarioSet && oTramite.LicenciaEstadoDiarioSet.results) || []
+                        })));
+                    },
+                    error: reject
+                });
+            });
+        },
+
+        /**
+         * Texto plano de las empresas que tramitan la licencia, mismo formato que arma LLTT
+         * para su mail (MailHelper.prepareContext): por empresa "<código> - <nombre>",
+         * "Estado de tramitación: <estado>" y las fechas "dd-MM-yyyy - <estado>: <observaciones>".
+         * Bloques separados por una línea en blanco; sin trámites devuelve "No hay comentarios".
+         * @param {Array} aTramites - Resultado de getTramitacionesLicencia
+         * @param {Object} oCatalogos - Resultado de getCatalogosEmpresasTexto
+         * @returns {string}
+         */
+        buildEmpresasTextoPlano: function (aTramites, oCatalogos) {
+            const aTramitesLicencia = Array.isArray(aTramites) ? aTramites : [];
+            if (aTramitesLicencia.length === 0) {
+                return "No hay comentarios";
+            }
+
+            const mNombreEmpresa = {};
+            ((oCatalogos && oCatalogos.empresas) || []).forEach(e => {
+                const sCodigo = String(e.Codigo || "").trim();
+                if (sCodigo) mNombreEmpresa[sCodigo] = (e.Descripcion || "").trim() || `Empresa ${sCodigo}`;
+            });
+
+            const mNombreEstado = {};
+            ((oCatalogos && oCatalogos.estados) || []).forEach(e => {
+                const sCodigo = String(e.Valkey || "").trim();
+                if (sCodigo) mNombreEstado[sCodigo] = (e.Valtext || "").trim() || sCodigo;
+            });
+
+            // Estado de cada fecha del calendario (en LLTT: FormatHelper.getEstadoTramitacion)
+            const mEstadoFecha = {
+                "NA": "No Autorizada",
+                "CC": "Condicionada",
+                "AS": "Anulada por el solicitante"
+            };
+
+            // dd-MM-yyyy con getters UTC (en LLTT: FormatHelper.formatDateLicenseWithoutUtc)
+            const fnFecha = (vFecha) => {
+                if (!vFecha) return "";
+                const d = vFecha instanceof Date ? vFecha : new Date(vFecha);
+                if (isNaN(d)) return "";
+                return String(d.getUTCDate()).padStart(2, "0") + "-" +
+                    String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + d.getUTCFullYear();
+            };
+
+            // Agrupación por empresa: fechas y estado de tramitación a nivel empresa
+            const mPorEmpresa = new Map();
+            aTramitesLicencia.forEach(oTramite => {
+                const sCodigo = oTramite.EmpTramita || oTramite.Empresa || "N/A";
+                const oEntrada = mPorEmpresa.get(sCodigo) || { fechas: [], estadoTramitacion: null };
+
+                const sEstado = String(oTramite.Estado || "").trim();
+                oEntrada.estadoTramitacion = mNombreEstado[sEstado] || sEstado || "-";
+
+                (oTramite.CalendarDates || []).forEach(oFecha => {
+                    oEntrada.fechas.push({
+                        FechaISO: oFecha.Fecha,
+                        Fecha: fnFecha(oFecha.Fecha),
+                        Estado: oFecha.Estado,
+                        EstadoDescripcion: mEstadoFecha[oFecha.Estado] || "",
+                        Observaciones: (oFecha.Observaciones || "-").trim()
+                    });
+                });
+
+                mPorEmpresa.set(sCodigo, oEntrada);
+            });
+
+            const sSalto = "\r\n";
+            const aBloques = Array.from(mPorEmpresa.keys()).sort().map(sCodigo => {
+                const oEntrada = mPorEmpresa.get(sCodigo);
+                const sNombre = mNombreEmpresa[sCodigo] || `Empresa ${sCodigo}`;
+
+                // Sin repetidos por (fecha | estado | observaciones), ordenadas por fecha
+                const oVistos = new Set();
+                const aFechas = oEntrada.fechas.filter(f => {
+                    const sClave = `${f.FechaISO}|${f.Estado}|${f.Observaciones}`;
+                    if (oVistos.has(sClave)) return false;
+                    oVistos.add(sClave);
+                    return true;
+                }).sort((a, b) => new Date(a.FechaISO) - new Date(b.FechaISO));
+
+                const sTextoFechas = aFechas
+                    .map(f => `${f.Fecha} - ${f.EstadoDescripcion}: ${f.Observaciones}`)
+                    .join(sSalto);
+
+                return `${sCodigo} - ${sNombre}${sSalto}` +
+                    `Estado de tramitación: ${oEntrada.estadoTramitacion || "-"}` +
+                    (sTextoFechas ? `${sSalto}${sTextoFechas}` : "");
+            });
+
+            return aBloques.length === 0 ? "No hay comentarios" : aBloques.join(sSalto + sSalto);
         }
+        // FIN MOD TRNS #TT-390
     };
 });

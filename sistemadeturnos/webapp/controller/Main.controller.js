@@ -7767,7 +7767,11 @@ sap.ui.define([
 
         // INI MOD TRNS #SistemaDeTurno-7
         // Filtro de columna de Acciones, Listados Cronológicos y Resumen: compara contra el texto
-        // de la celda sin distinguir mayúsculas, acentos ni espacios, y combina todas las columnas filtradas
+        // INI MOD TRNS #TT-390
+        // // de la celda sin distinguir mayúsculas, acentos ni espacios, y combina todas las columnas filtradas
+        // de la celda sin distinguir mayúsculas ni acentos, respetando los espacios, y combina
+        // todas las columnas filtradas
+        // FIN MOD TRNS #TT-390
         onColumnFilterTexto: function (oEvent) {
             oEvent.preventDefault();
 
@@ -7803,7 +7807,12 @@ sap.ui.define([
             return String(vValor == null ? "" : vValor)
                 .toLowerCase()
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                .replace(/\s+/g, "");
+                // INI MOD TRNS #TT-390
+                // Se respetan los espacios ("LT" no debe traer "SOL TEC"); solo se unifican
+                // los espacios repetidos o no separables en uno
+                // .replace(/\s+/g, "");
+                .replace(/\s+/g, " ");
+                // FIN MOD TRNS #TT-390
         },
         // FIN MOD TRNS #SistemaDeTurno-7
 
@@ -9473,6 +9482,11 @@ sap.ui.define([
             // Obtener el token CSRF una sola vez para todos los envíos
             const csrfTokenPromise = MailService.getCSRFToken(oComponent);
 
+            // INI MOD TRNS #TT-390
+            // Catálogos de empresas y estados de tramitación para empresasTextoPlano, una sola vez por envío
+            const oCatalogosPromise = TramitacionService.getCatalogosEmpresasTexto(oModel, SocietyHelper.getCurrentSociety(oView));
+            // FIN MOD TRNS #TT-390
+
             // Procesar cada licencia del modelo
             csrfTokenPromise.then((csrfToken) => {
                 currentCsrfToken = csrfToken;
@@ -9495,6 +9509,12 @@ sap.ui.define([
                                 LicenseService.getSelectionArea(oLicense.Tipo, "01")
                             )
                         );
+                        // INI MOD TRNS #TT-390
+                        // res[2]: catálogos; res[3]: tramitaciones de la licencia (null si no se pudieron leer,
+                        // para que el mail salga igual)
+                        promises.push(oCatalogosPromise);
+                        promises.push(TramitacionService.getTramitacionesLicencia(oModel, oLicense).catch(() => null));
+                        // FIN MOD TRNS #TT-390
 
                         Promise.all(promises)
                             .then(res => {
@@ -9528,7 +9548,11 @@ sap.ui.define([
 
                                 // Construir objeto licencia para el mail
                                 const oLicenciaParaMail = {
-                                    society: oLicense.Empresa,
+                                    // INI MOD TRNS #TT-390
+                                    // La plantilla solo usa society para la imagen del encabezado: misma regla que LLTT
+                                    // society: oLicense.Empresa,
+                                    society: oLicense.Empresa === "100" ? "TRANSENER" : "TRANSBA",
+                                    // FIN MOD TRNS #TT-390
                                     Destinatario: sDestinatario,
                                     Email: sDestinatario,
                                     Id: oLicense.Id || "",
@@ -9547,6 +9571,9 @@ sap.ui.define([
                                     Tipo: oLicense.Tipo || "L",
                                     Anio: oLicense.Anio || "",
                                     Period: oFormatter.getPeriod(oLicense.Period),
+                                    // INI MOD TRNS #TT-390
+                                    empresasTextoPlano: res[3] === null ? "" : TramitacionService.buildEmpresasTextoPlano(res[3], res[2]),
+                                    // FIN MOD TRNS #TT-390
                                 };
 
                                 console.log("Destinatario:", sDestinatario);
@@ -12464,12 +12491,26 @@ sap.ui.define([
             var oCountsModel = oView.getModel("countsModel");
             var oTotales = oCountsModel ? oCountsModel.getData() : {};
 
+            // INI MOD TRNS #TT-390
+            // La plantilla arma el encabezado con header-${context.society}-short.jpg: misma regla que LLTT
+            var sSociety = SocietyHelper.getCurrentSociety(oView) === "100" ? "TRANSENER" : "TRANSBA";
+            // FIN MOD TRNS #TT-390
+
             // Destinatarios hardcodeados
+            // INI MOD TRNS #TT-390
+            // Fase 1 acordada con el cliente: validar que el mail de maniobras a CAMMESA se dispara
+            // var aDestinatarios = [
+            //     "guillermo27@gmail.com",
+            //     "juan.adaro@altromondo.com.ar",
+            //     "chiara.signori@altromondo.com.ar"
+            // ];
             var aDestinatarios = [
-                "guillermo27@gmail.com",
+                "franco.cantero@altromondo.com.ar",
                 "juan.adaro@altromondo.com.ar",
-                "chiara.signori@altromondo.com.ar"
+                "leandro.damian.lopez@transener.com.ar",
+                "juan.marone@transener.com.ar"
             ];
+            // FIN MOD TRNS #TT-390
 
             // Aplanar filas del reporte como campos individuales (SAP WF no soporta arrays en templates)
             var oFilas = {};
@@ -12487,8 +12528,23 @@ sap.ui.define([
                 }
             }
 
-            sap.m.MessageBox.confirm("Se enviará el resumen de maniobras a CAMMESA (" + aDestinatarios.length + " destinatarios). ¿Desea continuar?", {
-                title: "Confirmar envío",
+            // INI MOD TRNS #TT-390
+            // El mail solo lleva las primeras iMaxFilas filas (límite de la plantilla del workflow).
+            // Si el resumen tiene más, el aviso se suma al confirm; con iMaxFilas o menos queda igual que antes.
+            var sTextoConfirmacion = "Se enviará el resumen de maniobras a CAMMESA (" + aDestinatarios.length + " destinatarios). ¿Desea continuar?";
+            var sTituloConfirmacion = "Confirmar envío";
+            if (aReporte.length > iMaxFilas) {
+                var oResourceBundle = oView.getModel("i18n").getResourceBundle();
+                sTextoConfirmacion = oResourceBundle.getText("cammesaFilasExcedidas", [aReporte.length, iMaxFilas, aReporte.length - iMaxFilas]) +
+                    "\n\n" + sTextoConfirmacion;
+                sTituloConfirmacion = oResourceBundle.getText("cammesaFilasExcedidasTitulo");
+            }
+
+            // sap.m.MessageBox.confirm("Se enviará el resumen de maniobras a CAMMESA (" + aDestinatarios.length + " destinatarios). ¿Desea continuar?", {
+            //     title: "Confirmar envío",
+            sap.m.MessageBox.confirm(sTextoConfirmacion, {
+                title: sTituloConfirmacion,
+            // FIN MOD TRNS #TT-390
                 onClose: function (oAction) {
                     if (oAction !== sap.m.MessageBox.Action.OK) {
                         return;
@@ -12503,7 +12559,14 @@ sap.ui.define([
                                 Fecha: sFecha,
                                 Filas: oFilas,
                                 Totales: oTotales,
-                                RangoHorario: sRangoHorario
+                                // INI MOD TRNS #TT-390
+                                // RangoHorario: sRangoHorario
+                                RangoHorario: sRangoHorario,
+                                // "Total de Maniobras" de la pantalla Resumen (filas de ReporteModel): es el
+                                // total real, aunque la tabla del mail se corte en iMaxFilas
+                                TotalManiobras: aReporte.length,
+                                society: sSociety
+                                // FIN MOD TRNS #TT-390
                             };
                             return MailService.sendMailCammesa(oData, oComponent, csrfToken);
                         });

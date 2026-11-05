@@ -34,7 +34,12 @@ sap.ui.define([
                     Comentarios: oLicencia.Comments || "",
                     DescripcionEquipo: oLicencia.DescEquipo || "",
                     Consola: oLicencia.Consola || "",
-                    Period: oLicencia.Period
+                    // INI MOD TRNS #TT-390
+                    // Period: oLicencia.Period
+                    Period: oLicencia.Period,
+                    // Empresas que tramitan la licencia, mismo formato que el mail de LLTT
+                    empresasTextoPlano: oLicencia.empresasTextoPlano || ""
+                    // FIN MOD TRNS #TT-390
                 };
 
                 const data = {
@@ -161,26 +166,34 @@ sap.ui.define([
         _getWorkflowRuntimeBaseURL: function (oComponent) {
             const appId = oComponent.getManifestEntry("/sap.app/id");
             const appPath = appId.replaceAll(".", "/");
-            let appModulePath = jQuery.sap.getModulePath(appPath);
-
-            const uuidWithDotPattern = /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.([^\/]+.*)/;
-            const match = appModulePath.match(uuidWithDotPattern);
-
-            if (match && match[2]) {
-                appModulePath = "/" + match[2];
-            } else {
-                const currentPath = window.location.pathname;
-                const pathMatch = currentPath.match(/\/(?:[0-9a-f-]+\.)?([^\/]+.*)/);
-                if (pathMatch && pathMatch[1]) {
-                    appModulePath = "/" + pathMatch[1];
-                }
-            }
-
-            if (!appModulePath.startsWith("/")) {
-                appModulePath = "/" + appModulePath;
-            }
+            // INI MOD TRNS #TT-390
+            // Igual que LLTT (MailHelper._getWorkflowRuntimeBaseURL): el path del módulo tal cual.
+            // Con destinations a nivel subcuenta el path ya no trae el prefijo "<GUID>." y el
+            // fallback a window.location.pathname daría la URL del site de Work Zone.
+            // let appModulePath = jQuery.sap.getModulePath(appPath);
+            //
+            // const uuidWithDotPattern = /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.([^\/]+.*)/;
+            // const match = appModulePath.match(uuidWithDotPattern);
+            //
+            // if (match && match[2]) {
+            //     appModulePath = "/" + match[2];
+            // } else {
+            //     const currentPath = window.location.pathname;
+            //     const pathMatch = currentPath.match(/\/(?:[0-9a-f-]+\.)?([^\/]+.*)/);
+            //     if (pathMatch && pathMatch[1]) {
+            //         appModulePath = "/" + pathMatch[1];
+            //     }
+            // }
+            //
+            // if (!appModulePath.startsWith("/")) {
+            //     appModulePath = "/" + appModulePath;
+            // }
+            //
+            // return appModulePath + "/bpmworkflowruntime/v1";
+            const appModulePath = jQuery.sap.getModulePath(appPath);
 
             return appModulePath + "/bpmworkflowruntime/v1";
+            // FIN MOD TRNS #TT-390
         },
 
         sendMailCammesa: function (oData, oComponent, csrfToken, onTokenExpired) {
@@ -198,7 +211,14 @@ sap.ui.define([
                 const sPostURL = sBaseURL + "/workflow-instances";
                 const context = Object.assign({
                     isCammesa: true,
-                    Asunto: "Resumen de Maniobras CAMMESA | " + oData.Fecha,
+                    // INI MOD TRNS #TT-390
+                    // Asunto: "Resumen de Maniobras CAMMESA | " + oData.Fecha,
+                    Asunto: "Maniobras " + oData.Fecha,
+                    // La plantilla arma el encabezado con header-${context.society}-short.jpg
+                    society: oData.society || "",
+                    // "Total de Maniobras: ${context.TotalManiobras}" en la plantilla, como la pantalla Resumen
+                    TotalManiobras: oData.TotalManiobras || 0,
+                    // FIN MOD TRNS #TT-390
                     Destinatario: oData.Destinatario || "",
                     Fecha: oData.Fecha || "",
                     Totales: oData.Totales || {},

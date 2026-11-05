@@ -18,7 +18,12 @@ modules:
         name: uaa_sistemaTurnos-key
   parameters:
     content:
-      instance:
+      # INI MOD TRNS #TT-390
+      # Igual que LLTT (c54cf7e "[fix] token"): destinations a nivel subcuenta, para que el
+      # managed approuter resuelva la ruta bpmworkflowruntime (service com.sap.spa.processautomation)
+      # instance:
+      subaccount:
+      # FIN MOD TRNS #TT-390
         destinations:
         - Name: sistemaTurnos_sistemaTurnos_html_repo_host
           ServiceInstanceName: transenersistemadeturnos-html5-srv
@@ -49,8 +54,11 @@ modules:
 - name: transenersistemadeturnos
   type: html5
   path: sistemadeturnos
-  requires:
-  - name: sap_processautomation
+  # INI MOD TRNS #TT-390
+  # Igual que LLTT (c54cf7e): sin requires de SBPA (el módulo html5 solo se construye, no se bindea)
+  # requires:
+  # - name: sap_processautomation
+  # FIN MOD TRNS #TT-390
   build-parameters:
     build-result: dist
     builder: custom
@@ -59,11 +67,16 @@ modules:
     - npm run build:cf
     supported-platforms: []
 resources:
-- name: sap_processautomation
-  type: org.cloudfoundry.managed-service
-  parameters:
-    service: process-automation-service
-    service-plan: standard
+# INI MOD TRNS #TT-390
+# Igual que LLTT (c54cf7e): la instancia de SBPA no la gestiona el MTA de la app. Deployar SIN
+# --delete-services: el mismo nombre lo declaran los MTA de los workflows
+# (transenerlicenciatrabajowfsendmail, wfTurnos).
+# - name: sap_processautomation
+#   type: org.cloudfoundry.managed-service
+#   parameters:
+#     service: process-automation-service
+#     service-plan: standard
+# FIN MOD TRNS #TT-390
 - name: sistemaTurnos-destination-service
   type: org.cloudfoundry.managed-service
   parameters:
