@@ -1,0 +1,93 @@
+<!-- INI MOD TRNS #SistemaDeTurno-Comentarios -->
+<!-- Historial de comentarios de una licencia (fila hija del Listado Cronológico).
+     Lo ven todos los roles; el alta solo se muestra con viewModel>/canComentar. -->
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+>
+    <ResponsivePopover
+        id="comentariosLicenciaPopover"
+        title="{comentariosModel>/titulo}"
+        placement="Auto"
+        contentWidth="30rem"
+        resizable="true"
+        class="comentariosPopover"
+    >
+        <content>
+            <VBox class="sapUiSmallMargin">
+                <!-- Entity set de comentarios todavía no publicado en el backend -->
+                <MessageStrip
+                    text="{i18n>comentariosBackendPendiente}"
+                    type="Information"
+                    showIcon="true"
+                    visible="{= ${comentariosModel>/disponible} === false }"
+                    class="sapUiSmallMarginBottom"
+                />
+
+                <!-- Comentario cargado en la solapa Turno (TurnosLicencias.Comentarios), solo lectura -->
+                <VBox
+                    visible="{= !!${comentariosModel>/comentarioTurno} }"
+                    class="sapUiSmallMarginBottom"
+                >
+                    <Label text="{i18n>comentariosDelTurno}" />
+                    <Text
+                        text="{comentariosModel>/comentarioTurno}"
+                        wrapping="true"
+                    />
+                </VBox>
+
+                <!-- Historial: usuario, fecha y hora, texto -->
+                <List
+                    items="{comentariosModel>/items}"
+                    busy="{comentariosModel>/busy}"
+                    busyIndicatorDelay="0"
+                    noDataText="{i18n>comentariosSinDatos}"
+                    showSeparators="Inner"
+                    growing="true"
+                    growingThreshold="20"
+                >
+                    <FeedListItem
+                        sender="{comentariosModel>Nombre}"
+                        senderActive="false"
+                        showIcon="false"
+                        timestamp="{
+                            parts: [
+                                'comentariosModel>Fecha',
+                                'comentariosModel>Hora'
+                            ],
+                            formatter: '.formatter.formatFechaHoraComentario'
+                        }"
+                        text="{comentariosModel>Texto}"
+                    />
+                </List>
+
+                <!-- Alta: solo Programación y Operaciones COT -->
+                <VBox
+                    visible="{= ${viewModel>/canComentar} === true }"
+                    class="sapUiSmallMarginTop"
+                >
+                    <TextArea
+                        value="{comentariosModel>/nuevoTexto}"
+                        valueLiveUpdate="true"
+                        placeholder="{i18n>comentariosPlaceholder}"
+                        maxLength="{comentariosModel>/maxTexto}"
+                        rows="3"
+                        width="100%"
+                        growing="true"
+                        growingMaxLines="8"
+                        enabled="{= ${comentariosModel>/disponible} === true &amp;&amp; !${comentariosModel>/busy} }"
+                    />
+                    <HBox justifyContent="End">
+                        <Button
+                            text="{i18n>comentariosAnadir}"
+                            type="Emphasized"
+                            press=".onAgregarComentarioLicencia"
+                            enabled="{= ${comentariosModel>/disponible} === true &amp;&amp; !${comentariosModel>/busy} }"
+                        />
+                    </HBox>
+                </VBox>
+            </VBox>
+        </content>
+    </ResponsivePopover>
+</core:FragmentDefinition>
+<!-- FIN MOD TRNS #SistemaDeTurno-Comentarios -->

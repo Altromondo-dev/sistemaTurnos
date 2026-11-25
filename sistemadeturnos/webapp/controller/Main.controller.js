@@ -28,7 +28,11 @@ sap.ui.define([
     "transener/sistemadeturnos/services/UserService",
     "transener/sistemadeturnos/services/EtMailService",
     "transener/sistemadeturnos/services/MailService",
-    "transener/sistemadeturnos/utils/SocietyHelper"
+    // INI MOD TRNS #SistemaDeTurno-Comentarios
+    // "transener/sistemadeturnos/utils/SocietyHelper"
+    "transener/sistemadeturnos/utils/SocietyHelper",
+    "transener/sistemadeturnos/services/ComentariosLicenciaService"
+    // FIN MOD TRNS #SistemaDeTurno-Comentarios
 
 
 // INI MOD TRNS #SistemaDeTurno-6
@@ -40,7 +44,10 @@ sap.ui.define([
     //services
     LicenseService, TurnosService, TipoEquipoService, InterventionTypesService, HardCodeModel,
     TreeTableHelper, TramitacionService, RoleHelper, UserService, EtMailService, MailService,
-    SocietyHelper
+    // INI MOD TRNS #SistemaDeTurno-Comentarios
+    // SocietyHelper
+    SocietyHelper, ComentariosLicenciaService
+    // FIN MOD TRNS #SistemaDeTurno-Comentarios
 ) {
     "use strict";
     let oDialog = null
@@ -83,6 +90,10 @@ sap.ui.define([
             });
             // FIN MOD TRNS #SistemaDeTurno-Permisos
             this.getView().setModel(oViewModel, "viewModel");
+            // INI MOD TRNS #SistemaDeTurno-Comentarios
+            // canComentar: alta de comentarios en el Listado Cronológico (la define _aplicarPermisosPorRol)
+            oViewModel.setProperty("/canComentar", false);
+            // FIN MOD TRNS #SistemaDeTurno-Comentarios
 
             const oReporteModel = new JSONModel([]);
             this.getView().setModel(oReporteModel, "ReporteModel");
@@ -289,6 +300,10 @@ sap.ui.define([
                 // FIN MOD TRNS #SistemaDeTurno-Permisos
                 oViewModel.setProperty("/isProgramacion", bCanViewFullDetail);
                 oViewModel.setProperty("/canViewResumen", bCanViewResumen);
+                // INI MOD TRNS #SistemaDeTurno-Comentarios
+                // - canComentar: Programación y Operaciones COT, sin importar si el turno es editable
+                oViewModel.setProperty("/canComentar", RoleHelper.canComment());
+                // FIN MOD TRNS #SistemaDeTurno-Comentarios
             }
 
             // Si tiene acceso al detalle completo, seleccionar la tab de Turno por defecto
@@ -2610,6 +2625,11 @@ sap.ui.define([
                                     Orden: oGuardada ? Number(oGuardada.Orden) || 0 : 0,
                                     Fijado: oGuardada ? oGuardada.Fijado === true : false,
                                     // FIN MOD TRNS #SistemaDeTurno-14
+                                    // INI MOD TRNS #SistemaDeTurno-Comentarios
+                                    // La cantidad de comentarios solo viene en TurnosLicenciasSet:
+                                    // sin copiarla acá, successSelectTurno la recibe vacía y queda en 0
+                                    CantComentarios: oGuardada ? Number(oGuardada.CantComentarios) || 0 : 0,
+                                    // FIN MOD TRNS #SistemaDeTurno-Comentarios
                                     Dateturno: oDateValue
                                 };
                             });
@@ -3148,6 +3168,11 @@ sap.ui.define([
                                 _originalOrden: Number(turnoLicencia.Orden) || 0,
                                 _originalFijado: turnoLicencia.Fijado === true,
                                 // FIN MOD TRNS #SistemaDeTurno-14
+                                // INI MOD TRNS #SistemaDeTurno-Comentarios
+                                // Cantidad de comentarios del historial (campo calculado de TurnosLicencias;
+                                // mientras el backend no lo envíe queda en 0)
+                                CantComentarios: Number(turnoLicencia.CantComentarios) || 0,
+                                // FIN MOD TRNS #SistemaDeTurno-Comentarios
                                 Comentarios: sComentariosCargados,
                                 _originalComentarios: sComentariosCargados,
                                 _originalTurno: turnoLicencia.Turno || "",
@@ -3186,6 +3211,9 @@ sap.ui.define([
                                     result._originalOrden = result.Orden;
                                     result._originalFijado = result.Fijado;
                                     // FIN MOD TRNS #SistemaDeTurno-14
+                                    // INI MOD TRNS #SistemaDeTurno-Comentarios
+                                    result.CantComentarios = Number(turnoLicencia.CantComentarios) || 0;
+                                    // FIN MOD TRNS #SistemaDeTurno-Comentarios
                                     const sComentariosError = turnoLicencia.Comentarios || result.Comentarios || (mComentariosPreservados && mComentariosPreservados[turnoLicencia.Id]) || "";
                                     result.Comentarios = sComentariosError;
                                     result._originalComentarios = sComentariosError;
@@ -12166,12 +12194,18 @@ sap.ui.define([
                             console.log(`      ✅ ${node.Id}: ${aAdjuntos.length} adjunto(s)`);
                             iTotalAdjuntos += aAdjuntos.length;
                         }
+                        // INI MOD TRNS #SistemaDeTurno-Comentarios
+                        this._marcarComentariosLicencia(node);
+                        // FIN MOD TRNS #SistemaDeTurno-Comentarios
                     } else if (node._isGroup === true) {
                         // Es un grupo (nodo padre) — propagar flags desde los hijos
                         const aHijos = node.children || [];
                         node._tieneAdjuntosHijos = aHijos.some(h => h._tieneAdjuntos);
                         node._totalAdjuntosHijos = aHijos.reduce((acc, h) => acc + (h._cantidadAdjuntos || 0), 0);
-                        node._tieneComentariosHijos = aHijos.some(h => h.Comentarios && h.Comentarios.trim() !== "");
+                        // INI MOD TRNS #SistemaDeTurno-Comentarios
+                        // node._tieneComentariosHijos = aHijos.some(h => h.Comentarios && h.Comentarios.trim() !== "");
+                        this._marcarComentariosGrupo(node);
+                        // FIN MOD TRNS #SistemaDeTurno-Comentarios
                     }
                 });
             };
@@ -12405,6 +12439,202 @@ sap.ui.define([
             if (!oContext) { return; }
             this._expandTreeRowByContext("cronoTreeTable", "listCronoTreeModel", oContext);
         },
+
+        // INI MOD TRNS #SistemaDeTurno-Comentarios
+        // ════════════════════════════════════════════════════════════════
+        // Comentarios por licencia (fila hija del Listado Cronológico).
+        // Historial con usuario, fecha y hora; lo ven todos los roles y agregan
+        // Programación y Operaciones COT (viewModel>/canComentar). La llamada al
+        // backend está aislada en ComentariosLicenciaService.
+        // ════════════════════════════════════════════════════════════════
+
+        // Cantidad de comentarios del historial de una licencia, como número. El botón de la
+        // fila depende solo de este valor (el comentario de la solapa Turno no cuenta)
+        _marcarComentariosLicencia: function (oNodo) {
+            oNodo.CantComentarios = Number(oNodo.CantComentarios) || 0;
+        },
+
+        // Indicador del grupo: suma de CantComentarios de sus hijos
+        _marcarComentariosGrupo: function (oGrupo) {
+            oGrupo._totalComentariosHijos = (oGrupo.children || [])
+                .reduce((iTotal, oHijo) => iTotal + (Number(oHijo.CantComentarios) || 0), 0);
+            oGrupo._tieneComentariosHijos = oGrupo._totalComentariosHijos > 0;
+        },
+
+        // Popover del historial: se carga una sola vez y queda como dependiente de la vista
+        _getComentariosPopover: function () {
+            if (!this._pComentariosPopover) {
+                this._pComentariosPopover = Fragment.load({
+                    id: this.getView().getId(),
+                    name: "transener.sistemadeturnos.fragments.ComentariosLicencia",
+                    controller: this
+                }).then((oPopover) => {
+                    this.getView().addDependent(oPopover);
+                    oPopover.setModel(new JSONModel({ items: [] }), "comentariosModel");
+                    return oPopover;
+                }).catch((oError) => {
+                    // Si falla la carga se reintenta en el próximo clic
+                    this._pComentariosPopover = null;
+                    throw oError;
+                });
+            }
+            return this._pComentariosPopover;
+        },
+
+        // Clic en el ícono de comentarios de una licencia: abre el popover y carga el historial
+        onAbrirComentariosLicencia: async function (oEvent) {
+            const oButton = oEvent.getSource();
+            const oContext = oButton.getBindingContext("listCronoTreeModel");
+            const oNodo = oContext && oContext.getObject();
+            if (!oNodo || oNodo._isGroup !== false) {
+                return;
+            }
+
+            const oBundle = this.getView().getModel("i18n").getResourceBundle();
+
+            try {
+                const oPopover = await this._getComentariosPopover();
+                oPopover.getModel("comentariosModel").setData({
+                    licencia: {
+                        Empresa: oNodo.Empresa,
+                        Tipo: oNodo.Tipo,
+                        Anio: oNodo.Anio,
+                        Id: oNodo.Id
+                    },
+                    titulo: oBundle.getText("comentariosTitulo", [oNodo.Id || ""]),
+                    comentarioTurno: String(oNodo.Comentarios || "").trim(),
+                    items: [],
+                    nuevoTexto: "",
+                    maxTexto: ComentariosLicenciaService.MAX_TEXTO,
+                    disponible: null,
+                    busy: false
+                });
+                oPopover.openBy(oButton);
+            } catch (oError) {
+                console.error("Error al abrir los comentarios de la licencia:", oError);
+                MessageBox.error(oBundle.getText("comentariosErrorCarga"));
+                return;
+            }
+
+            await this._cargarComentariosLicencia();
+        },
+
+        // Lee el historial de la licencia abierta en el popover.
+        // Devuelve los comentarios leídos, o null si no se pudieron leer.
+        _cargarComentariosLicencia: async function () {
+            const oPopover = await this._getComentariosPopover();
+            const oComentariosModel = oPopover.getModel("comentariosModel");
+            const oLicencia = oComentariosModel.getProperty("/licencia");
+            // Si mientras tanto se abrió otra licencia, la respuesta de esta se descarta
+            const bSigueAbierta = () => oComentariosModel.getProperty("/licencia") === oLicencia;
+
+            oComentariosModel.setProperty("/busy", true);
+            try {
+                const oModel = this.getView().getModel();
+                const bDisponible = await ComentariosLicenciaService.isDisponible(oModel);
+                if (bSigueAbierta()) {
+                    oComentariosModel.setProperty("/disponible", bDisponible);
+                }
+                if (!bDisponible) {
+                    return null;
+                }
+
+                const aComentarios = await ComentariosLicenciaService.leer(oModel, oLicencia);
+                if (bSigueAbierta()) {
+                    oComentariosModel.setProperty("/items", aComentarios);
+                }
+                return aComentarios;
+            } catch (oError) {
+                console.error("Error al leer los comentarios de la licencia:", oError);
+                const oBundle = this.getView().getModel("i18n").getResourceBundle();
+                const sDetalle = ComentariosLicenciaService.getMensajeError(oError);
+                MessageBox.error(oBundle.getText("comentariosErrorCarga"), { details: sDetalle || undefined });
+                return null;
+            } finally {
+                if (bSigueAbierta()) {
+                    oComentariosModel.setProperty("/busy", false);
+                }
+            }
+        },
+
+        // Botón "Añadir comentario": registra el comentario, refresca el historial y el contador de la fila
+        onAgregarComentarioLicencia: async function () {
+            const oViewModel = this.getView().getModel("viewModel");
+            if (!oViewModel || oViewModel.getProperty("/canComentar") !== true) {
+                return;
+            }
+
+            const oBundle = this.getView().getModel("i18n").getResourceBundle();
+            const oPopover = await this._getComentariosPopover();
+            const oComentariosModel = oPopover.getModel("comentariosModel");
+            const oLicencia = oComentariosModel.getProperty("/licencia");
+            const sTexto = String(oComentariosModel.getProperty("/nuevoTexto") || "").trim();
+
+            if (!sTexto) {
+                MessageHelper.show(oBundle.getText("comentariosTextoVacio"));
+                return;
+            }
+
+            oComentariosModel.setProperty("/busy", true);
+            try {
+                const oDatePicker = this.byId("date");
+                await ComentariosLicenciaService.crear(
+                    this.getView().getModel(),
+                    oLicencia,
+                    sTexto,
+                    oDatePicker && oDatePicker.getDateValue()
+                );
+                oComentariosModel.setProperty("/nuevoTexto", "");
+                MessageHelper.show(oBundle.getText("comentariosAgregado"));
+            } catch (oError) {
+                console.error("Error al guardar el comentario de la licencia:", oError);
+                const sDetalle = ComentariosLicenciaService.getMensajeError(oError);
+                MessageBox.error(oBundle.getText("comentariosErrorAlta"), { details: sDetalle || undefined });
+                return;
+            } finally {
+                oComentariosModel.setProperty("/busy", false);
+            }
+
+            const aComentarios = await this._cargarComentariosLicencia();
+            if (aComentarios) {
+                this._actualizarContadorComentarios(oLicencia, aComentarios.length);
+            }
+        },
+
+        // Actualiza la cantidad de comentarios de la licencia en el árbol.
+        // Con filtros de columna la tabla tiene su propio modelo con copias de los nodos
+        // (ver onFilter / onClearFilter): se actualizan el de la tabla y el de la vista,
+        // para que el contador no vuelva al valor viejo al limpiar los filtros.
+        _actualizarContadorComentarios: function (oLicencia, iCantidad) {
+            const oTreeTable = this.byId("cronoTreeTable");
+            const aModelos = [
+                this.getView().getModel("listCronoTreeModel"),
+                oTreeTable && oTreeTable.getModel("listCronoTreeModel")
+            ].filter(Boolean);
+
+            const esLaLicencia = (oNodo) => oNodo.Id === oLicencia.Id &&
+                oNodo.Empresa === oLicencia.Empresa &&
+                oNodo.Tipo === oLicencia.Tipo &&
+                oNodo.Anio === oLicencia.Anio;
+
+            new Set(aModelos).forEach((oModelo) => {
+                (oModelo.getData() || []).forEach((oGrupo) => {
+                    const aHijos = oGrupo.children || [];
+                    const aDeLaLicencia = aHijos.filter(esLaLicencia);
+                    if (!aDeLaLicencia.length) {
+                        return;
+                    }
+
+                    aDeLaLicencia.forEach((oHijo) => {
+                        oHijo.CantComentarios = iCantidad;
+                        this._marcarComentariosLicencia(oHijo);
+                    });
+                    this._marcarComentariosGrupo(oGrupo);
+                });
+                oModelo.refresh();
+            });
+        },
+        // FIN MOD TRNS #SistemaDeTurno-Comentarios
 
         // Helper: expande la fila del TreeTable cuyo contexto coincide con oContext
         _expandTreeRowByContext: function (sTableId, sModelName, oContext) {

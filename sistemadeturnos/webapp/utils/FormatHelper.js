@@ -207,7 +207,32 @@ sap.ui.define([
                 default:
                     return sLicstat || "";
             }
+        // INI MOD TRNS #SistemaDeTurno-Comentarios
+        // },
+        },
+
+        // Fecha y hora de un comentario de licencia ("dd.MM.yyyy HH:mm").
+        // Fecha es Edm.DateTime de fecha (medianoche UTC, por eso getters UTC) y Hora es
+        // Edm.Time ({ ms }). Vacíos o inválidos no rompen: se muestra lo que haya.
+        formatFechaHoraComentario: function (vFecha, vHora) {
+            const pad = (n) => String(n).padStart(2, "0");
+
+            let sFecha = "";
+            const oFecha = vFecha ? new Date(vFecha) : null;
+            if (oFecha && !isNaN(oFecha.getTime())) {
+                sFecha = pad(oFecha.getUTCDate()) + "." + pad(oFecha.getUTCMonth() + 1) + "." + oFecha.getUTCFullYear();
+            }
+
+            let sHora = "";
+            const iMs = vHora && Number(vHora.ms);
+            if (iMs || iMs === 0) {
+                const iMinutos = Math.floor(iMs / 60000);
+                sHora = pad(Math.floor(iMinutos / 60) % 24) + ":" + pad(iMinutos % 60);
+            }
+
+            return [sFecha, sHora].filter(Boolean).join(" ");
         }
+        // FIN MOD TRNS #SistemaDeTurno-Comentarios
     };
 
     return FormatHelper;
