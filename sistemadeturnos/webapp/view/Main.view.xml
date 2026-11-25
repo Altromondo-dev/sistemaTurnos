@@ -643,6 +643,21 @@
                                             </VBox>
                                         </t:template>
                                     </t:Column>
+
+                                    <!-- INI MOD TRNS #SistemaDeTurno-EstadoEntrega -->
+                                    <!-- Estado de entrega de la licencia (Licstat + Substatus grabados por Licencias de Trabajo).
+                                         No confundir con statusCrono, que muestra el estado del equipo (Equstat). -->
+                                    <t:Column id="estadoEntregaCrono" width="130px" hAlign="Center">
+                                        <Label text="{i18n>estadoEntrega}" />
+                                        <t:template>
+                                            <ObjectStatus
+                                                text="{parts: [{path: 'listCronoTreeModel>Licstat'}, {path: 'listCronoTreeModel>Substatus'}], formatter: '.formatter.formatEstadoEntregaText'}"
+                                                state="{parts: [{path: 'listCronoTreeModel>Licstat'}, {path: 'listCronoTreeModel>Substatus'}], formatter: '.formatter.formatEstadoEntregaState'}"
+                                                inverted="true"
+                                                visible="{= ${listCronoTreeModel>_isGroup} === false }" />
+                                        </t:template>
+                                    </t:Column>
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-EstadoEntrega -->
                                 </t:columns>
                             </t:TreeTable>
                         </IconTabFilter>

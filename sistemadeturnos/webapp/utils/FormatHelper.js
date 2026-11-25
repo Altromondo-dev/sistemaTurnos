@@ -231,8 +231,44 @@ sap.ui.define([
             }
 
             return [sFecha, sHora].filter(Boolean).join(" ");
-        }
+        // INI MOD TRNS #SistemaDeTurno-EstadoEntrega
+        // }
+        },
+        // FIN MOD TRNS #SistemaDeTurno-EstadoEntrega
         // FIN MOD TRNS #SistemaDeTurno-Comentarios
+
+        // INI MOD TRNS #SistemaDeTurno-EstadoEntrega
+        // Estado de entrega de la licencia según lo grabado por Licencias de Trabajo
+        // (Licstat 01 + Substatus). Devuelve { text, state } para un sap.m.ObjectStatus:
+        //   01 + "E"      -> Entregado    (Success, verde)
+        //   01 + "D"      -> Devuelto     (Warning, naranja)
+        //   01 + "N" / "" -> No entregado (Error, rojo)
+        //   otro caso (S, R, F, Licstat != 01) o fila de grupo -> vacío
+        _getEstadoEntrega: function (sLicstat, sSubstatus) {
+            if (sLicstat !== "01") {
+                return { text: "", state: "None" };
+            }
+            switch (sSubstatus) {
+                case "E":
+                    return { text: "Entregado", state: "Success" };
+                case "D":
+                    return { text: "Devuelto", state: "Warning" };
+                case "N":
+                case "":
+                    return { text: "No entregado", state: "Error" };
+                default:
+                    return { text: "", state: "None" };
+            }
+        },
+
+        formatEstadoEntregaText: function (sLicstat, sSubstatus) {
+            return FormatHelper._getEstadoEntrega(sLicstat, sSubstatus).text;
+        },
+
+        formatEstadoEntregaState: function (sLicstat, sSubstatus) {
+            return FormatHelper._getEstadoEntrega(sLicstat, sSubstatus).state;
+        }
+        // FIN MOD TRNS #SistemaDeTurno-EstadoEntrega
     };
 
     return FormatHelper;
