@@ -46,6 +46,15 @@ sap.ui.define([
             "Jefe_Turno_COTDT"                // OPE00019 Jefe Turno COTDT
         ],
 
+        // INI MOD TRNS #SistemaDeTurno-Comentarios
+        // Operaciones COT: junto con Programación (ROLES_EDITOR) pueden agregar comentarios
+        // a las licencias del Listado Cronológico. Mismos tags que en ROLES_BASIC_VIEWER.
+        ROLES_COMENTARIOS_OPERACIONES: [
+            "Operador_COT",                   // OPE00011 Operador COT
+            "Jefe_Turno_COT"                  // OPE00012 Jefe Turno COT
+        ],
+        // FIN MOD TRNS #SistemaDeTurno-Comentarios
+
         _getUserRoles: function () {
             var oUserModel = AppManagementHelper.getModel("UserJsonModel");
             return (oUserModel && oUserModel.getProperty("/roles")) || [];
@@ -83,6 +92,14 @@ sap.ui.define([
         canViewResumen: function () {
             return this.isEditor() || this.isFullViewer() || this.isBasicViewer();
         },
+
+        // INI MOD TRNS #SistemaDeTurno-Comentarios
+        // Programación u Operaciones COT: agregan comentarios en el Listado Cronológico.
+        // No depende de que el turno sea editable (se puede comentar en turnos pasados).
+        canComment: function () {
+            return this.isEditor() || this._hasAny(this.ROLES_COMENTARIOS_OPERACIONES);
+        },
+        // FIN MOD TRNS #SistemaDeTurno-Comentarios
 
         // O visualizador (cualquiera que no sea editor)
         isViewer: function () {

@@ -126,6 +126,33 @@ html.sap-desktop .sapMIBar.sapMFooter-CTX {
     color: white !important;
 }
 
+/* INI MOD TRNS #SistemaDeTurno-Comentarios */
+/* Botón de comentarios de la licencia SIN comentarios (type Transparent): blanco, con borde
+   e ícono en el azul del header de la tabla. La regla global .sapMBtnInner (más arriba) pinta
+   todos los botones de #3a668b con ícono blanco, y por eso el Transparent se veía oscuro.
+   El botón CON comentarios (Emphasized) no se toca. */
+.sapMBtn.comentariosBtn .sapMBtnInner.sapMBtnTransparent {
+    background-color: #ffffff !important;
+    border: 1px solid #255780 !important;
+    color: #255780 !important;
+}
+
+.sapMBtn.comentariosBtn:hover .sapMBtnInner.sapMBtnTransparent,
+.sapMBtn.comentariosBtn .sapMBtnInner.sapMBtnTransparent.sapMBtnActive {
+    background-color: #e8f0f7 !important;
+}
+
+.sapMBtn.comentariosBtn .sapMBtnInner.sapMBtnTransparent .sapUiIcon {
+    color: #255780 !important;
+}
+
+/* Popover del historial de comentarios: título y botones del header en blanco sobre el azul */
+.comentariosPopover .sapMIBar.sapMHeader-CTX .sapMTitle,
+.comentariosPopover .sapMIBar.sapMHeader-CTX .sapMBtn .sapUiIcon {
+    color: #ffffff !important;
+}
+/* FIN MOD TRNS #SistemaDeTurno-Comentarios */
+
 /* ============================================================
    ESTILOS PARA TRAMITACIÓN - Coloreo de filas
    Agregar a: webapp/css/style.css

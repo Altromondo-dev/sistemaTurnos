@@ -611,12 +611,23 @@
                                         <Label text="Comentarios" />
                                         <t:template>
                                             <VBox>
+                                                <!-- INI MOD TRNS #SistemaDeTurno-Comentarios -->
+                                                <!-- Nodo hijo: el texto se reemplaza por el ícono que abre el historial de la licencia
+                                                     (el comentario del turno se sigue viendo dentro del popover) -->
                                                 <!-- Nodo hijo: texto de comentarios -->
-                                                <VBox visible="{= ${listCronoTreeModel>_isGroup} === false }">
+                                                <!-- <VBox visible="{= ${listCronoTreeModel>_isGroup} === false }">
                                                     <Text text="{listCronoTreeModel>Comentarios}" wrapping="true" class="sapUiTinyMarginBottom" />
-                                                </VBox>
+                                                </VBox> -->
+                                                <!-- Depende solo de CantComentarios: 0 o vacío → neutro sin número, >0 → resaltado con el número.
+                                                     comentariosBtn: el neutro (Transparent) se ve blanco, ver style.css -->
+                                                <Button class="comentariosBtn" icon="sap-icon://comment" type="{= ${listCronoTreeModel>CantComentarios} > 0 ? 'Emphasized' : 'Transparent' }" text="{= ${listCronoTreeModel>CantComentarios} > 0 ? String(${listCronoTreeModel>CantComentarios}) : '' }" tooltip="{i18n>comentariosVerHistorial}" press=".onAbrirComentariosLicencia" visible="{= ${listCronoTreeModel>_isGroup} === false }" />
+                                                <!-- FIN MOD TRNS #SistemaDeTurno-Comentarios -->
                                                 <!-- Nodo padre: indicador si algún hijo tiene comentarios -->
-                                                <Button icon="sap-icon://comment" type="Transparent" class="whiteIconButton" tooltip="Hay comentarios – expandir para ver" press=".onComentariosParentFromTree" visible="{= ${listCronoTreeModel>_isGroup} === true &amp;&amp; ${listCronoTreeModel>_tieneComentariosHijos} === true }" />
+                                                <!-- INI MOD TRNS #SistemaDeTurno-Comentarios -->
+                                                <!-- Visible si la suma de CantComentarios de los hijos es mayor a 0 -->
+                                                <!-- <Button icon="sap-icon://comment" type="Transparent" class="whiteIconButton" tooltip="Hay comentarios – expandir para ver" press=".onComentariosParentFromTree" visible="{= ${listCronoTreeModel>_isGroup} === true &amp;&amp; ${listCronoTreeModel>_tieneComentariosHijos} === true }" /> -->
+                                                <Button icon="sap-icon://comment" type="Transparent" class="whiteIconButton" tooltip="Hay comentarios – expandir para ver" press=".onComentariosParentFromTree" visible="{= ${listCronoTreeModel>_isGroup} === true &amp;&amp; ${listCronoTreeModel>_totalComentariosHijos} > 0 }" />
+                                                <!-- FIN MOD TRNS #SistemaDeTurno-Comentarios -->
                                             </VBox>
                                         </t:template>
                                     </t:Column>
