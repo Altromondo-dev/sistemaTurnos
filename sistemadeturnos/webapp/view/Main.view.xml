@@ -487,7 +487,10 @@
                                     <!-- Columna de Equipo con icono de expansión -->
                                     <!-- INI MOD TRNS #SistemaDeTurno-7 -->
                                     <!-- <t:Column id="equipmentCrono" width="200px" class="customColumnBackground" hAlign="Left"> -->
-                                    <t:Column id="equipmentCrono" width="200px" class="customColumnBackground" hAlign="Left" filterProperty="Equnr">
+                                    <!-- INI MOD TRNS #SistemaDeTurno-EstadoEntrega -->
+                                    <!-- <t:Column id="equipmentCrono" width="200px" class="customColumnBackground" hAlign="Left" filterProperty="Equnr"> -->
+                                    <t:Column id="equipmentCrono" width="150px" class="customColumnBackground" hAlign="Left" filterProperty="Equnr">
+                                    <!-- FIN MOD TRNS #SistemaDeTurno-EstadoEntrega -->
                                     <!-- FIN MOD TRNS #SistemaDeTurno-7 -->
                                         <Label text="{i18n>equipment}" />
                                         <t:template>
